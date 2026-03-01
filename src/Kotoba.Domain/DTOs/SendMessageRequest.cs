@@ -1,4 +1,4 @@
-﻿namespace Kotoba.Domain.DTOs;
+namespace Kotoba.Domain.DTOs;
 
 public class SendMessageRequest
 {
