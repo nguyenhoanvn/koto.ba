@@ -219,24 +219,50 @@ dotnet ef migrations remove --project src/Kotoba.Infrastructure/Kotoba.Infrastru
 ```
 koto.ba/
 ├── src/
-│   ├── Kotoba.Client/                 (Blazor WebAssembly UI)
-│   ├── Kotoba.Server/                 (ASP.NET Core Web API + SignalR)
-│   ├── Kotoba.Shared/                 (Shared DTO request/response models)
-│   ├── Kotoba.Application/            (Use-case service interfaces)
-│   ├── Kotoba.Domain/                 (Entities, Enums, Value Objects)
-│   └── Kotoba.Infrastructure/         (EF Core, Identity, repositories)
+│   ├── Kotoba.Client/                  (Blazor WebAssembly UI)
+│   ├── Kotoba.Server/                  (ASP.NET Core Web API + SignalR hub)
+│   ├── Kotoba.Shared/                  (Shared DTO request/response models)
+│   ├── Kotoba.Core/                    (Service interfaces — no implementation)
+│   │   └── Interfaces/
+│   ├── Kotoba.Domain/                  (Entities, Enums, DTOs)
+│   │   ├── Entities/
+│   │   ├── Enums/
+│   │   └── DTOs/
+│   └── Kotoba.Infrastructure/          (EF Core, Identity, service implementations)
+│       ├── Data/                       (DbContext, Migrations)
+│       └── Services/
+│           ├── Identity/               (UserService, PresenceService)
+│           ├── Conversations/          (ConversationService)
+│           ├── Messages/               (MessageService)
+│           ├── Reactions/
+│           ├── Attachments/
+│           ├── Realtime/
+│           └── Social/
 ├── tests/
 └── Kotoba.sln
 ```
+
+### Layer Dependency Order
+
+```
+Kotoba.Domain  ←  Kotoba.Core  ←  Kotoba.Infrastructure  ←  Kotoba.Server
+                                                         ←  Kotoba.Client
+```
+
+- **Kotoba.Core** depends only on `Kotoba.Domain` (interfaces reference DTOs and entities)
+- **Kotoba.Infrastructure** depends on `Kotoba.Core` + `Kotoba.Domain`
+- **Kotoba.Server** depends on `Kotoba.Core` + `Kotoba.Domain` + `Kotoba.Infrastructure`
+- **Kotoba.Client** has no direct dependency on server-side projects
 
 ### Where to Work Based on Your Subsystem
 
 | Subsystem | Your Primary Folders |
 |-----------|---------------------|
-| **Identity & User** | `Infrastructure/Identity/`<br>`Application/Interfaces/IUserService.cs`<br>`Domain/Entities/User.cs` |
-| **Chat & Messaging** | `Infrastructure/Chat/`<br>`Application/Interfaces/IMessageService.cs`<br>`Domain/Entities/Message.cs` |
-| **Reactions & Attachments** | `Infrastructure/Reactions/`<br>`Application/Interfaces/IReactionService.cs`<br>`Domain/Entities/Reaction.cs` |
-| **AI & Social** | `Infrastructure/`<br>`Application/Interfaces/IAIReplyService.cs` |
+| **Identity & User** | `Infrastructure/Services/Identity/`<br>`Core/Interfaces/IUserService.cs`<br>`Domain/Entities/User.cs` |
+| **Chat & Messaging** | `Infrastructure/Services/Conversations/`<br>`Infrastructure/Services/Messages/`<br>`Core/Interfaces/IConversationService.cs`<br>`Domain/Entities/Conversation.cs`, `Message.cs` |
+| **Reactions & Attachments** | `Infrastructure/Services/Reactions/`<br>`Infrastructure/Services/Attachments/`<br>`Core/Interfaces/IReactionService.cs`<br>`Domain/Entities/Reaction.cs` |
+| **AI & Social** | `Infrastructure/Services/Social/`<br>`Core/Interfaces/IAIReplyService.cs`<br>`Core/Interfaces/IStoryService.cs` |
+| **Realtime (SignalR)** | `Server/Hubs/ChatHub.cs`<br>`Infrastructure/Services/Realtime/`<br>`Core/Interfaces/IRealtimeChatService.cs` |
 
 ---
 

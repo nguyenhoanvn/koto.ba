@@ -89,6 +89,30 @@ The system is divided into independent subsystems, each responsible for a clearl
 
 Tight coupling is avoided to enable parallel development.
 
+### Project Layers
+
+```
+┌───────────────────────────────────────────────────────┐
+│  Kotoba.Client        (Blazor WebAssembly UI)         │
+│  Kotoba.Server        (Web API + SignalR entry point) │
+├───────────────────────────────────────────────────────┤
+│  Kotoba.Infrastructure (Service implementations,      │
+│                         EF Core, Identity, SignalR)   │
+├───────────────────────────────────────────────────────┤
+│  Kotoba.Core          (Service interfaces only)       │
+├───────────────────────────────────────────────────────┤
+│  Kotoba.Domain        (Entities, Enums, DTOs)         │
+└───────────────────────────────────────────────────────┘
+```
+
+**Kotoba.Shared** holds DTOs used by both client and server (independent of the above layers).
+
+Dependency rules:
+- `Kotoba.Core` → `Kotoba.Domain` only
+- `Kotoba.Infrastructure` → `Kotoba.Core` + `Kotoba.Domain`
+- `Kotoba.Server` → `Kotoba.Core` + `Kotoba.Domain` + `Kotoba.Infrastructure`
+- No layer may reference a layer above it
+
 ### Design Goals
 - Easy task assignment
 - Reduced merge conflicts
@@ -252,7 +276,7 @@ Tight coupling is avoided to enable parallel development.
 #### Technologies
 - Entity Framework Core
 - SignalR (reaction updates)
-- IFormFile
+- `System.IO.Stream` (file upload, no ASP.NET Core dependency in Domain)
 - Local file storage
 
 #### Depends On
@@ -484,7 +508,9 @@ Subsystems may only communicate via defined interfaces.
 
 **UploadAttachmentRequest**
 - MessageId
-- File
+- FileStream (`System.IO.Stream`)
+- FileName
+- ContentType
 
 #### Constraints
 - One reaction per user per message
