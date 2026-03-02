@@ -133,7 +133,7 @@ Chat 1–1 realtime hoạt động.
 
 ## Dũng
 
-[] Presence broadcast
+[x] Presence broadcast
 
 ## Hoàn
 
