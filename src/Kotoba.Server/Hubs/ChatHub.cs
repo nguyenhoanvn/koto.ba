@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using Kotoba.Infrastructure.Services.Messages;
 
 namespace Kotoba.Server.Hubs
 {
@@ -16,11 +17,17 @@ namespace Kotoba.Server.Hubs
     {
         private readonly ApplicationDbContext _db;
         private readonly IPresenceBroadcastService _presenceBroadcastService;
+        private readonly IReactionService _reactionService;
+        private readonly IMessageService _messageService;
 
-        public ChatHub(ApplicationDbContext db, IPresenceBroadcastService presenceBroadcastService)
+
+        public ChatHub(ApplicationDbContext db, IPresenceBroadcastService presenceBroadcastService, IReactionService reactionService, IMessageService messageService)
         {
             _db = db;
             _presenceBroadcastService = presenceBroadcastService;
+            _reactionService = reactionService;
+            _messageService = messageService;
+
         }
 
         public override async Task OnConnectedAsync()
@@ -141,51 +148,16 @@ namespace Kotoba.Server.Hubs
         public async Task SendMessage(SendMessageRequest request)
         {
             var userId = Context.UserIdentifier!;
+            request.SenderId = userId;
 
-            // Validate participant
-            var isParticipant = await _db.ConversationParticipants
-                .AnyAsync(p => p.ConversationId == request.ConversationId
-                            && p.UserId == userId
-                            && p.IsActive);
+            var message = await _messageService.SendMessageAsync(request);
+            if (message == null)
+                throw new HubException("Access denied or conversation not found.");
 
-            if (!isParticipant)
-                throw new HubException("Access denied.");
 
-            // Save to DB
-            var message = new Message
-            {
-                Id = Guid.NewGuid(),
-                ConversationId = request.ConversationId,
-                SenderId = userId,
-                Content = request.Content,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Messages.Add(message);
-
-            // Update conversation timestamp
-            var conversation = await _db.Conversations.FindAsync(request.ConversationId);
-            if (conversation != null)
-                conversation.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync();
-
-            // Load sender info
-            var sender = await _db.Users.FindAsync(userId);
-
-            var dto = new MessageDto {
-                MessageId = message.Id,
-                ConversationId = message.ConversationId,
-                SenderId = message.SenderId,
-                Content = message.Content,
-                CreatedAt = message.CreatedAt,
-                Status = MessageStatus.Sent
-            };
-
-            // Broadcast to all in the conversation group (including sender)
-            // Client sẽ dùng TempId để replace optimistic message
-            await Clients.Group(request.ConversationId.ToString())
-                .SendAsync("MessageConfirmed", dto, request.TempId);
+            await Clients
+                .Group(request.ConversationId.ToString())
+                .SendAsync("MessageConfirmed", message, request.TempId);
         }
 
         private async Task<ConversationDto> MapConversationDto(Conversation c)
@@ -223,6 +195,44 @@ namespace Kotoba.Server.Hubs
                 UpdatedAt = c.UpdatedAt
             };
         }
+        public async Task ReactToMessage(Guid conversationId, Guid messageId, ReactionType reactionType)
+        {
+            var userId = Context.UserIdentifier!;
 
+            await AssertParticipantAsync(conversationId, userId);
+
+            var reaction = await _reactionService.AddOrUpdateReactionAsync(userId, messageId, reactionType);
+            if (reaction == null)
+                throw new HubException("Message not found.");
+
+            await Clients
+                .Group(conversationId.ToString())
+                .SendAsync("ReactionUpdated", reaction);
+        }
+
+        public async Task RemoveReaction(Guid conversationId, Guid messageId)
+        {
+            var userId = Context.UserIdentifier!;
+            await AssertParticipantAsync(conversationId, userId);
+
+            var removed = await _reactionService.RemoveReactionAsync(userId, messageId);
+
+            if (!removed)
+                throw new HubException("Message not found or no reaction to remove.");
+            await Clients
+                .Group(conversationId.ToString())
+                .SendAsync("ReactionRemoved", new {messageId, userId});
+        }
+
+        private async Task AssertParticipantAsync(Guid conversationId, string userId)
+        {
+            var isParticipant = await _db.ConversationParticipants
+                .AnyAsync(p => p.ConversationId == conversationId
+                            && p.UserId == userId
+                            && p.IsActive);
+
+            if (!isParticipant)
+                throw new HubException("Access denied.");
+        }
     }
 }
