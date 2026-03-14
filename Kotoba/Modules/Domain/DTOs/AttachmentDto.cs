@@ -1,0 +1,12 @@
+﻿using Kotoba.Modules.Domain.Enums;
+
+namespace Kotoba.Modules.Domain.DTOs;
+
+public class AttachmentDto
+{
+    public Guid AttachmentId { get; set; }
+    public Guid MessageId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public FileType FileType { get; set; }
+    public string FileUrl { get; set; } = string.Empty;
+}
