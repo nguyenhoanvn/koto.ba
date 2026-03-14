@@ -67,11 +67,11 @@ Ai phụ trách gì → giữ nguyên.
 
 ## Dũng
 
-[] Identity hoàn chỉnh
-[] Register / Login chạy được
-[] User profile
-[] Migration xong
-[] Presence memory-based
+[x] Identity hoàn chỉnh
+[x] Register / Login chạy được
+[x] User profile
+[x] Migration xong
+[x] Presence memory-based
 
 ## Nga
 
@@ -90,7 +90,7 @@ Ai phụ trách gì → giữ nguyên.
 
 ## Hoàn
 
-[] UI Login
+[x] UI Login
 [] UI Chat page cơ bản
 [] Connect SignalR
 [] Hiển thị message realtime
@@ -122,7 +122,7 @@ Chat 1–1 realtime hoạt động.
 
 ## Dũng
 
-[] Presence broadcast
+[x] Presence broadcast
 
 ## Hoàn
 
