@@ -2,15 +2,146 @@
 
 <PageTitle>Home</PageTitle>
 
-<h1>Kotoba</h1>
+<div class="home-page">
+	<section class="home-hero">
+		<div class="home-hero-layout">
+			<div>
+				<div class="home-badges" aria-label="Highlights">
+					<span class="home-badge">Fast setup</span>
+					<span class="home-badge">Clean interface</span>
+					<span class="home-badge">Built for teams and friends</span>
+				</div>
 
-<AuthorizeView>
-	<Authorized Context="authContext">
-		<p>You are logged in as <strong>@authContext.User.Identity?.Name</strong>.</p>
-		<p><a href="/profile">Go to profile</a></p>
-	</Authorized>
-	<NotAuthorized>
-		<p>You are not logged in.</p>
-		<p><a href="/login">Login</a> or <a href="/register">Register</a></p>
-	</NotAuthorized>
-</AuthorizeView>
+				<p class="home-eyebrow">koto.ba</p>
+				<h1 class="home-title">A cleaner way to chat, share updates, and stay in sync.</h1>
+				<p class="home-subtitle">koto.ba gives you direct messages, stories, and profile tools in one focused workspace. No clutter, no heavy UI noise, just the essentials done well.</p>
+
+				<div class="home-actions">
+					<a class="home-btn home-btn-primary" href="/register">Get Started</a>
+					<a class="home-btn home-btn-secondary" href="/login">Sign in</a>
+					<a class="home-btn home-btn-secondary" href="/chat">Open Chat</a>
+				</div>
+
+				<p class="home-status">Start in under a minute. Create an account now and continue setup inside your profile.</p>
+			</div>
+
+			<div class="home-hero-art" aria-hidden="true">
+				<div class="home-art-orb home-art-orb-lg"></div>
+				<div class="home-art-orb home-art-orb-sm"></div>
+
+				<div class="home-art-chip home-art-chip-1">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+					</svg>
+				</div>
+
+				<div class="home-art-chip home-art-chip-2">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="12" cy="8" r="4" />
+						<path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" />
+					</svg>
+				</div>
+
+				<div class="home-art-chip home-art-chip-3">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="12" cy="12" r="10" />
+						<circle cx="12" cy="12" r="4" />
+					</svg>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="home-metrics" aria-label="Platform highlights">
+		<article class="home-metric-card">
+			<p class="home-metric-value">Simple</p>
+			<p class="home-metric-label">Straightforward flows from login to first conversation</p>
+		</article>
+		<article class="home-metric-card">
+			<p class="home-metric-value">Reliable</p>
+			<p class="home-metric-label">Stable page structure that works across desktop and mobile</p>
+		</article>
+		<article class="home-metric-card">
+			<p class="home-metric-value">Focused</p>
+			<p class="home-metric-label">Minimal surfaces and practical actions for day-to-day usage</p>
+		</article>
+	</section>
+
+	<section class="home-grid" aria-label="Main features">
+		<article class="home-card">
+			<div class="home-card-icon" aria-hidden="true">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+				</svg>
+			</div>
+			<h2>Conversations</h2>
+			<p>Start one-to-one chats and group discussions with a layout that keeps context easy to scan.</p>
+		</article>
+
+		<article class="home-card">
+			<div class="home-card-icon" aria-hidden="true">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="12" cy="12" r="10" />
+					<circle cx="12" cy="12" r="4" />
+				</svg>
+			</div>
+			<h2>Stories</h2>
+			<p>Share short updates that expire, perfect for quick check-ins and lightweight daily moments.</p>
+		</article>
+
+		<article class="home-card">
+			<div class="home-card-icon" aria-hidden="true">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="12" cy="8" r="4" />
+					<path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" />
+				</svg>
+			</div>
+			<h2>Profiles</h2>
+			<p>Keep your identity and preferences current so your workspace feels personal from day one.</p>
+		</article>
+
+		<article class="home-card">
+			<div class="home-card-icon" aria-hidden="true">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+				</svg>
+			</div>
+			<h2>Privacy-first defaults</h2>
+			<p>Clear account boundaries and predictable auth flows make the product easier to trust.</p>
+		</article>
+
+		<article class="home-card">
+			<div class="home-card-icon" aria-hidden="true">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M3 12h18" />
+					<path d="M12 3v18" />
+				</svg>
+			</div>
+			<h2>Scales with your usage</h2>
+			<p>Whether you are messaging a few friends or running a larger group, navigation stays simple.</p>
+		</article>
+
+		<article class="home-card">
+			<div class="home-card-icon" aria-hidden="true">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M5 12h14" />
+					<path d="M12 5l7 7-7 7" />
+				</svg>
+			</div>
+			<h2>Quick onboarding</h2>
+			<p>New users can sign up, complete profile basics, and get into chat in just a few steps.</p>
+		</article>
+	</section>
+
+	<section class="home-cta" aria-label="Call to action">
+		<div>
+			<p class="home-cta-eyebrow">Ready to begin?</p>
+			<h2>Launch your koto.ba workspace today.</h2>
+			<p>Set up your account and start your first conversation with a UI that stays out of the way.</p>
+		</div>
+		<div class="home-actions home-actions-compact">
+			<a class="home-btn home-btn-primary" href="/register">Create Account</a>
+			<a class="home-btn home-btn-secondary" href="/login">I already have an account</a>
+		</div>
+	</section>
+</div>

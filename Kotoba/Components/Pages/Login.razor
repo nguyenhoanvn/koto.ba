@@ -2,34 +2,66 @@
 
 <PageTitle>Login</PageTitle>
 
-<h1>Login</h1>
+<div class="auth-page auth-page-login">
+    <section class="auth-shell" aria-labelledby="login-title">
+        <div class="auth-hero">
+            <div class="auth-brand">
+                <div class="auth-brand-mark">K</div>
+                <div>
+                    <div class="auth-brand-name">koto.ba</div>
+                    <p class="auth-brand-copy">Secure messaging for your daily conversations.</p>
+                </div>
+            </div>
 
-@if (ShowError)
-{
-    <div class="alert alert-danger" role="alert">
-        Invalid email or password.
-    </div>
-}
+            <div class="auth-hero-copy">
+                <p class="auth-eyebrow">Welcome back</p>
+                <h1 id="login-title" class="auth-title">Sign in to your account</h1>
+                <p class="auth-subtitle">Use your email and password to continue to chats, stories, and profile.</p>
+            </div>
 
-<form method="post" action="/auth/login">
-    <AntiforgeryToken />
+            <div class="auth-feature-list" aria-label="Highlights">
+                <div class="auth-feature-item">Continue your conversations where you left off.</div>
+                <div class="auth-feature-item">Manage account settings and profile in one place.</div>
+                <div class="auth-feature-item">Stay signed in securely with your existing session.</div>
+            </div>
+        </div>
 
-    <div class="mb-3">
-        <label class="form-label" for="email">Email</label>
-        <input class="form-control" id="email" name="Email" type="email" required />
-    </div>
+        <div class="auth-panel">
+            <div class="auth-panel-header">
+                <p class="auth-panel-kicker">Account access</p>
+                <h2 class="auth-panel-title">Login</h2>
+                <p class="auth-panel-copy">Enter your email and password to continue.</p>
+            </div>
 
-    <div class="mb-3">
-        <label class="form-label" for="password">Password</label>
-        <input class="form-control" id="password" name="Password" type="password" required />
-    </div>
+            @if (ShowError)
+            {
+                <div class="auth-alert" role="alert">
+                    Invalid email or password.
+                </div>
+            }
 
-    <button type="submit" class="btn btn-primary">Login</button>
-</form>
+            <form method="post" action="/auth/login" class="auth-form">
+                <AntiforgeryToken />
 
-<p class="mt-3">
-    Don't have an account? <a href="/register">Register</a>
-</p>
+                <div class="auth-field">
+                    <label class="auth-label" for="email">Email</label>
+                    <input class="auth-input" id="email" name="Email" type="email" placeholder="you@koto.ba" autocomplete="email" required />
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="password">Password</label>
+                    <input class="auth-input" id="password" name="Password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+                </div>
+
+                <button type="submit" class="auth-submit">Sign in</button>
+            </form>
+
+            <p class="auth-footer">
+                Don't have an account? <a href="/register">Create one</a>
+            </p>
+        </div>
+    </section>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "error")]

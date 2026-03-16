@@ -2,45 +2,76 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<div class="auth-page auth-page-register">
+    <section class="auth-shell" aria-labelledby="register-title">
+        <div class="auth-hero">
+            <div class="auth-brand">
+                <div class="auth-brand-mark">K</div>
+                <div>
+                    <div class="auth-brand-name">koto.ba</div>
+                    <p class="auth-brand-copy">Create an account to start messaging.</p>
+                </div>
+            </div>
 
-@if (ErrorMessages.Count > 0)
-{
-    <div class="alert alert-danger" role="alert">
-        <p class="mb-2">Registration failed:</p>
-        <ul class="mb-0">
-            @foreach (var message in ErrorMessages)
+            <div class="auth-hero-copy">
+                <p class="auth-eyebrow">Create account</p>
+                <h1 id="register-title" class="auth-title">Create your account</h1>
+                <p class="auth-subtitle">Set up your profile details to access chats and stories.</p>
+            </div>
+
+            <div class="auth-note-card">
+                <p class="auth-note-label">Before you start</p>
+                <p class="auth-note-copy">Use an email you can access. You can update your display name later in profile settings.</p>
+            </div>
+        </div>
+
+        <div class="auth-panel">
+            <div class="auth-panel-header">
+                <p class="auth-panel-kicker">New profile</p>
+                <h2 class="auth-panel-title">Register</h2>
+                <p class="auth-panel-copy">Set up the basics and continue into the app.</p>
+            </div>
+
+            @if (ErrorMessages.Count > 0)
             {
-                <li>@message</li>
+                <div class="auth-alert" role="alert">
+                    <p class="auth-alert-title">Registration failed</p>
+                    <ul class="auth-alert-list">
+                        @foreach (var message in ErrorMessages)
+                        {
+                            <li>@message</li>
+                        }
+                    </ul>
+                </div>
             }
-        </ul>
-    </div>
-}
 
-<form method="post" action="/auth/register">
-    <AntiforgeryToken />
+            <form method="post" action="/auth/register" class="auth-form">
+                <AntiforgeryToken />
 
-    <div class="mb-3">
-        <label class="form-label" for="displayName">Display Name</label>
-        <input class="form-control" id="displayName" name="DisplayName" required />
-    </div>
+                <div class="auth-field">
+                    <label class="auth-label" for="displayName">Display Name</label>
+                    <input class="auth-input" id="displayName" name="DisplayName" placeholder="How people will see you" autocomplete="nickname" required />
+                </div>
 
-    <div class="mb-3">
-        <label class="form-label" for="email">Email</label>
-        <input class="form-control" id="email" name="Email" type="email" required />
-    </div>
+                <div class="auth-field">
+                    <label class="auth-label" for="email">Email</label>
+                    <input class="auth-input" id="email" name="Email" type="email" placeholder="you@koto.ba" autocomplete="email" required />
+                </div>
 
-    <div class="mb-3">
-        <label class="form-label" for="password">Password</label>
-        <input class="form-control" id="password" name="Password" type="password" required />
-    </div>
+                <div class="auth-field">
+                    <label class="auth-label" for="password">Password</label>
+                    <input class="auth-input" id="password" name="Password" type="password" placeholder="Create a password" autocomplete="new-password" required />
+                </div>
 
-    <button type="submit" class="btn btn-primary">Register</button>
-</form>
+                <button type="submit" class="auth-submit">Create account</button>
+            </form>
 
-<p class="mt-3">
-    Already have an account? <a href="/login">Login</a>
-</p>
+            <p class="auth-footer">
+                Already have an account? <a href="/login">Sign in</a>
+            </p>
+        </div>
+    </section>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "errors")]

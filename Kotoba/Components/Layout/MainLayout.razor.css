@@ -2,10 +2,16 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
 
 main {
     flex: 1;
+}
+
+.page > :not(.sidebar) {
+    flex: 1;
+    min-width: 0;
 }
 
 .sidebar {
