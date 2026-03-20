@@ -1,6 +1,7 @@
-﻿using Kotoba.Modules.Domain.DTOs;
+using Kotoba.Modules.Domain.DTOs;
 using Kotoba.Modules.Domain.Entities;
 using Kotoba.Modules.Domain.Interfaces;
+using Kotoba.Modules.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 
 namespace Kotoba.Modules.Infrastructure.Services.Identity
@@ -12,16 +13,23 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
 
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly UserProfileRepository _userProfileRepository;
 
-        public UserService(UserManager<User> userManager, SignInManager<User> signInManager)
+        public UserService(UserManager<User> userManager, SignInManager<User> signInManager, UserProfileRepository userProfileRepository)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _userProfileRepository = userProfileRepository;
         }
 
         public Task<UserProfile?> GetUserProfileAsync(string userId)
         {
             return GetUserProfileInternalAsync(userId);
+        }
+
+        public IQueryable<UserProfile> GetUsersByDisplayNameAsync(string searchValue)
+        {
+            return _userProfileRepository.GetUsersByDisplayNameAsync(searchValue);
         }
 
         public async Task<bool> LoginAsync(LoginRequest request)
@@ -272,6 +280,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
                 LastSeenAt = user.LastSeenAt
             };
         }
+
 
         private static AccountOperationResult FromIdentityResult(IdentityResult result)
         {

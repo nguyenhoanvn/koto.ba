@@ -1,23 +1,78 @@
+using Azure.Core;
 using Kotoba.Modules.Domain.DTOs;
 using Kotoba.Modules.Domain.Entities;
 using Kotoba.Modules.Domain.Enums;
 using Kotoba.Modules.Domain.Interfaces;
 using Kotoba.Modules.Infrastructure.Data;
+using Kotoba.Modules.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 
 namespace Kotoba.Modules.Infrastructure.Services.Conversations
 {
     public class ConversationService : IConversationService
-    {
-        private KotobaDbContext _context;
-        public ConversationService(IDbContextFactory<KotobaDbContext> DbFactory)
-        {
-            _context = DbFactory.CreateDbContext();
+    {        
+        ConversationParticipantRepository _conversationParticipantRepository;
+        ConversationRepository _conversationRepository;
+        public ConversationService(ConversationParticipantRepository conversationParticipantRepository, ConversationRepository conversationRepository)
+        {            
+            _conversationParticipantRepository = conversationParticipantRepository;
+            _conversationRepository = conversationRepository;
         }
-        public Task<ConversationDto?> CreateDirectConversationAsync(string userAId, string userBId)
+
+        public async Task<ConversationDto?> CreateSelfDirectConversationAsync(string userAId)
         {
-            throw new NotImplementedException();
+            Conversation newConversation = new Conversation
+            {
+                Id = Guid.Parse(userAId),
+                Type = ConversationType.Direct
+            };
+            await _conversationRepository.AddAsync(newConversation);
+            await _conversationParticipantRepository.AddAsync(new ConversationParticipant
+            {
+                ConversationId = newConversation.Id,
+                UserId = userAId
+            });            
+
+            ConversationDto conversationDto = new ConversationDto
+            {
+                ConversationId = newConversation.Id,
+                Type = newConversation.Type,
+                GroupName = newConversation.GroupName,
+                CreatedAt = newConversation.CreatedAt,
+                UpdatedAt = newConversation.UpdatedAt
+            };
+            return conversationDto;
+        }
+        public async Task<ConversationDto?> CreateDirectConversationAsync(string userAId, string userBId)
+        {
+            Conversation newConversation = new Conversation
+            {
+                Type = ConversationType.Direct                
+            };
+
+            await _conversationRepository.AddAsync(newConversation);
+            await _conversationParticipantRepository.AddAsync(new ConversationParticipant
+            {
+                ConversationId = newConversation.Id,
+                UserId = userAId
+            });
+            await _conversationParticipantRepository.AddAsync(new ConversationParticipant
+            {
+                ConversationId = newConversation.Id,
+                UserId = userBId
+            });
+
+
+            ConversationDto conversationDto = new ConversationDto
+            {
+                ConversationId = newConversation.Id,
+                Type = newConversation.Type,
+                GroupName = newConversation.GroupName,
+                CreatedAt = newConversation.CreatedAt,
+                UpdatedAt = newConversation.UpdatedAt
+            };
+            return conversationDto;
         }
 
         public async Task<ConversationDto?> CreateGroupConversationAsync(CreateGroupRequest request)
@@ -28,17 +83,15 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
                 Type = type,
                 GroupName = request.GroupName
             };
-            _context.Conversations.Add(newConversation);
-            await _context.SaveChangesAsync();
+            await _conversationRepository.AddAsync(newConversation);            
 
             foreach(string participantId in request.ParticipantIds)
             {
-                _context.ConversationParticipants.Add(new ConversationParticipant
+                await _conversationParticipantRepository.AddAsync(new ConversationParticipant
                 {
                     ConversationId = newConversation.Id,
                     UserId = participantId
-                });
-                await _context.SaveChangesAsync();
+                });                
             }                                    
 
             ConversationDto conversationDto = new ConversationDto
@@ -52,16 +105,16 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
             return conversationDto;
         }
 
-        public Task<ConversationDto?> GetConversationDetailAsync(Guid conversationId)
+        public async Task<ConversationDto?> GetConversationDetailAsync(string conversationId)
         {
-            throw new NotImplementedException();
+            return await _conversationRepository.GetConversationDetailByIdAsync(conversationId);
         }
 
-        public Task<List<ConversationDto>> FindGroupConversationsAsync(string userId, string groupName)
+        public async Task<List<ConversationDto>> FindGroupConversationsAsync(string userId, string groupName)
         {
             if(!string.IsNullOrEmpty(userId))
             {
-                List<ConversationParticipant> conversations = _context.ConversationParticipants.Include(cp => cp.Conversation).Where(cp => cp.UserId != null && cp.UserId.Equals(userId) && cp.Conversation.GroupName != null && cp.Conversation.GroupName.Equals(groupName)).ToList();
+                List<ConversationParticipant> conversations = await _conversationParticipantRepository.GetAllConversationByGroupNameForUserAsync(userId, groupName);
                 List<ConversationDto> conversationDtos = conversations.Select(cp => new ConversationDto
                 {
                     ConversationId = cp.ConversationId,
@@ -70,16 +123,16 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
                     CreatedAt = cp.Conversation.CreatedAt,
                     UpdatedAt = cp.Conversation.UpdatedAt
                 }).ToList();
-                return Task.FromResult(conversationDtos);
+                return await Task.FromResult(conversationDtos);
             }
-            return Task.FromResult(new List<ConversationDto>());
+            return await Task.FromResult(new List<ConversationDto>());
         }
 
-        public Task<List<ConversationDto>> GetUserConversationsAsync(string userId)
+        public async Task<List<ConversationDto>> GetUserConversationsAsync(string userId)
         {
             if (!string.IsNullOrEmpty(userId))
             {
-                List<ConversationParticipant> conversations = _context.ConversationParticipants.Include(cp => cp.Conversation).Where(cp => cp.UserId != null && cp.UserId.Equals(userId)).ToList();
+                List<ConversationParticipant> conversations = await _conversationParticipantRepository.GetAllConversationByUserAsync(userId);
                 List<ConversationDto> conversationDtos = conversations.Select(cp => new ConversationDto
                 {
                     ConversationId = cp.ConversationId,
@@ -88,57 +141,52 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
                     CreatedAt = cp.Conversation.CreatedAt,
                     UpdatedAt = cp.Conversation.UpdatedAt
                 }).ToList();
-                return Task.FromResult(conversationDtos);
+                return await Task.FromResult(conversationDtos);
             }
-            return Task.FromResult(new List<ConversationDto>());
+            return await Task.FromResult(new List<ConversationDto>());
         }
 
-        public Task<ConversationDto?> FindDirectConversationsAsync(string userAId, string userBId)
+        public async Task<ConversationDto?> FindDirectConversationsAsync(string userAId, string userBId)
         {
             if (string.IsNullOrEmpty(userAId) || string.IsNullOrEmpty(userBId))
-                return Task.FromResult<ConversationDto?>(null);
+                return await Task.FromResult<ConversationDto?>(null);
+
+            if(userAId.Equals(userBId))
+            {
+                // Check if a direct conversation already exists for the user with themselves
+                var selfConv = await _conversationRepository.GetConversationDetailByIdAsync(userAId);                
+                if (selfConv == null)
+                {
+                    var conversationTask = CreateSelfDirectConversationAsync(userAId);
+                    return await conversationTask;
+                }
+                return selfConv;
+            }
 
             // Find conversation IDs where userA is a participant
-            var userAConvIds = _context.ConversationParticipants
-                .Where(cp => cp.UserId == userAId)
-                .Select(cp => cp.ConversationId);
+            var userAConvIds = _conversationParticipantRepository.GetAllConversationIdsForUserAsync(userAId);
 
             // Find conversation IDs where userB is a participant
-            var userBConvIds = _context.ConversationParticipants
-                .Where(cp => cp.UserId == userBId)
-                .Select(cp => cp.ConversationId);
+            var userBConvIds = _conversationParticipantRepository.GetAllConversationIdsForUserAsync(userBId);
 
             // The direct conversation is the one shared by BOTH users
             var sharedConvId = userAConvIds.Intersect(userBConvIds).FirstOrDefault();
 
             if (sharedConvId == default)
             {
-                // Await the task returned by CreateGroupConversationAsync and wrap it in Task.FromResult
-                if (!userAId.Equals(userBId))
-                {
-                    var conversationTask = CreateGroupConversationAsync(new CreateGroupRequest { ParticipantIds = [userAId, userBId] });
-                    return conversationTask;
-                }
-                else
-                {
-                    var conversationTask = CreateGroupConversationAsync(new CreateGroupRequest { ParticipantIds = [userAId] });
-                    return conversationTask;
-                }
+                // Await the task returned by CreateGroupConversationAsync and wrap it in Task.FromResult              
+                var conversationTask = CreateDirectConversationAsync(userAId, userBId);
+                return await conversationTask;                               
             }
 
-            var conversation = _context.Conversations
-                .Where(c => c.Id == sharedConvId && c.Type == Domain.Enums.ConversationType.Direct)
-                .Select(c => new ConversationDto
-                {
-                    ConversationId = c.Id,
-                    Type = c.Type,
-                    GroupName = c.GroupName,
-                    CreatedAt = c.CreatedAt,
-                    UpdatedAt = c.UpdatedAt
-                })
-                .FirstOrDefault();
+            var conversation = await _conversationRepository.GetConversationByIdAsync(sharedConvId);
 
-            return Task.FromResult(conversation);
+            return await Task.FromResult(conversation);
+        }
+
+        public Task<List<UserProfile>> GetOtherUsersInConversationsAsync(string conversationId, string userId)
+        {
+            return _conversationParticipantRepository.GetOtherUsersInConversationAsync(conversationId, userId);
         }
     }
 }

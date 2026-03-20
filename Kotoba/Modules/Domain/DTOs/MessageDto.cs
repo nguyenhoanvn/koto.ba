@@ -1,10 +1,11 @@
-﻿using Kotoba.Modules.Domain.Enums;
+using Kotoba.Modules.Domain.Enums;
 
 namespace Kotoba.Modules.Domain.DTOs;
 
 public class MessageDto
 {
     public Guid MessageId { get; set; }
+    public string? TempId { get; set; }
     public Guid ConversationId { get; set; }
     public string SenderId { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
