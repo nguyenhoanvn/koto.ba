@@ -1,57 +1,212 @@
 @page "/profile"
 @attribute [Authorize]
+@rendermode InteractiveServer
 
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
 
 <PageTitle>Profile</PageTitle>
 
-<h1>Profile</h1>
+<div class="profile-page">
+    <section class="profile-shell" aria-labelledby="profile-title">
+        @if (isLoading)
+        {
+            <div class="profile-state" role="status">Loading your account...</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+        {
+            <div class="profile-alert profile-alert-error" role="alert">@loadErrorMessage</div>
+        }
+        else
+        {
+            <header class="profile-hero">
+                <div class="profile-avatar-wrap" aria-hidden="true">
+                    <div class="profile-avatar">@AvatarLabel</div>
+                </div>
 
-@if (isLoading)
-{
-    <p>Loading...</p>
-}
-else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
-{
-    <div class="alert alert-danger" role="alert">@loadErrorMessage</div>
-}
-else
-{
-    @if (!string.IsNullOrWhiteSpace(successMessage))
-    {
-        <div class="alert alert-success" role="alert">@successMessage</div>
-    }
+                <div class="profile-hero-body">
+                    <h1 id="profile-title" class="profile-title">@DisplayNameOrFallback</h1>
+                    <div class="profile-meta">@UserHandle</div>
+                    <p class="profile-subtitle">@ProfileBioOrFallback</p>
+                </div>
+            </header>
 
-    @if (!string.IsNullOrWhiteSpace(saveErrorMessage))
-    {
-        <div class="alert alert-danger" role="alert">@saveErrorMessage</div>
-    }
+            @if (!string.IsNullOrWhiteSpace(successMessage))
+            {
+                <div class="profile-alert profile-alert-success" role="status">@successMessage</div>
+            }
 
-    <EditForm Model="updateRequest" OnValidSubmit="SaveProfileAsync">
-        <DataAnnotationsValidator />
+            @if (!string.IsNullOrWhiteSpace(saveErrorMessage))
+            {
+                <div class="profile-alert profile-alert-error" role="alert">@saveErrorMessage</div>
+            }
 
-        <div class="mb-3">
-            <label class="form-label" for="displayName">Display Name</label>
-            <InputText id="displayName" class="form-control" @bind-Value="updateRequest.DisplayName" />
-        </div>
+            <nav class="profile-tabs" aria-label="Profile sections">
+                <button type="button" class="profile-tab @(GetTabClass(ProfileTab.Profile))" @onclick="() => SetActiveTab(ProfileTab.Profile)">Profile Info</button>
+                <button type="button" class="profile-tab @(GetTabClass(ProfileTab.Security))" @onclick="() => SetActiveTab(ProfileTab.Security)">Security</button>
+                <button type="button" class="profile-tab @(GetTabClass(ProfileTab.DangerZone))" @onclick="() => SetActiveTab(ProfileTab.DangerZone)">Danger Zone</button>
+            </nav>
 
-        <div class="mb-3">
-            <label class="form-label" for="avatarUrl">Avatar URL</label>
-            <InputText id="avatarUrl" class="form-control" @bind-Value="updateRequest.AvatarUrl" />
-        </div>
+            @if (activeTab is ProfileTab.Profile)
+            {
+                <EditForm Model="profileForm" OnValidSubmit="SaveProfileAsync" class="profile-form-shell">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="profile-validation" />
 
-        <button class="btn btn-primary" type="submit">Save</button>
-    </EditForm>
-}
+                    <section class="profile-section" aria-labelledby="profile-personal-info">
+                        <h2 id="profile-personal-info" class="profile-section-title">Personal Info</h2>
+
+                        <div class="profile-form-grid">
+                            <div class="profile-field">
+                                <label for="displayName" class="profile-label">Display Name</label>
+                                <InputText id="displayName" class="profile-input" @bind-Value="profileForm.DisplayName" />
+                            </div>
+
+                            <div class="profile-field">
+                                <label for="userName" class="profile-label">Username (Handle)</label>
+                                <InputText id="userName" class="profile-input" @bind-Value="profileForm.UserName" placeholder="yourhandle" />
+                            </div>
+
+                            <div class="profile-field">
+                                <label for="email" class="profile-label">Email</label>
+                                <InputText id="email" class="profile-input" @bind-Value="profileForm.Email" placeholder="you@koto.ba" />
+                            </div>
+
+                            <div class="profile-field">
+                                <label for="avatarUrl" class="profile-label">Avatar URL</label>
+                                <InputText id="avatarUrl" class="profile-input" @bind-Value="profileForm.AvatarUrl" placeholder="https://example.com/avatar.jpg" />
+                            </div>
+
+                            <div class="profile-field profile-field-full">
+                                <label for="bio" class="profile-label">Bio</label>
+                                <InputTextArea id="bio" class="profile-input profile-textarea" @bind-Value="profileForm.Bio" />
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="profile-save-bar">
+                        <p class="profile-save-hint">@LastUpdatedText</p>
+                        <button class="profile-btn profile-btn-primary" type="submit" disabled="@isSaving">
+                            @(isSaving ? "Saving..." : "Save Changes")
+                        </button>
+                    </div>
+                </EditForm>
+            }
+
+            @if (activeTab is ProfileTab.Security)
+            {
+                <section class="profile-section" aria-labelledby="security-title">
+                    <h2 id="security-title" class="profile-section-title">Security</h2>
+                    <EditForm Model="passwordForm" OnValidSubmit="HandlePasswordUiSubmit" class="profile-security-form">
+                        <div class="profile-form-grid">
+                            <div class="profile-field profile-field-full">
+                                <label for="currentPassword" class="profile-label">Current Password</label>
+                                <InputText id="currentPassword" type="password" class="profile-input" @bind-Value="passwordForm.CurrentPassword" placeholder="Enter current password" />
+                            </div>
+
+                            <div class="profile-field">
+                                <label for="newPassword" class="profile-label">New Password</label>
+                                <InputText id="newPassword" type="password" class="profile-input" @bind-Value="passwordForm.NewPassword" placeholder="At least 8 characters" />
+                            </div>
+
+                            <div class="profile-field">
+                                <label for="confirmPassword" class="profile-label">Confirm Password</label>
+                                <InputText id="confirmPassword" type="password" class="profile-input" @bind-Value="passwordForm.ConfirmPassword" placeholder="Repeat new password" />
+                            </div>
+                        </div>
+
+                        <div class="profile-save-bar">
+                            <p class="profile-save-hint">Your session will remain active. Log out and back in to verify the new password works.</p>
+                            <button type="submit" class="profile-btn profile-btn-primary">Change Password</button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(securityMessage))
+                        {
+                            <div class="profile-alert" role="status">@securityMessage</div>
+                        }
+                    </EditForm>
+                </section>
+            }
+
+            @if (activeTab is ProfileTab.DangerZone)
+            {
+                <section class="profile-section" aria-labelledby="danger-title">
+                    <h2 id="danger-title" class="profile-section-title">Danger Zone</h2>
+                    <div class="profile-danger-list">
+                        <article class="profile-danger-card">
+                            <div>
+                                <h3>Deactivate Account</h3>
+                                <p>Temporarily disable your account and reactivate later.</p>
+                            </div>
+                            <button type="button" class="profile-btn profile-btn-warning" @onclick="DeactivateAccountAsync">Deactivate</button>
+                        </article>
+
+                        <article class="profile-danger-card">
+                            <div>
+                                <h3>Delete Account</h3>
+                                <p>Permanently remove your account and associated data.</p>
+                            </div>
+                            <button type="button" class="profile-btn profile-btn-danger" @onclick="DeleteAccountAsync">Delete Account</button>
+                        </article>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(dangerMessage))
+                    {
+                        <div class="profile-alert profile-alert-error" role="alert">@dangerMessage</div>
+                    }
+                </section>
+            }
+        }
+    </section>
+</div>
 
 @code {
-    private readonly UpdateProfileRequest updateRequest = new();
+    private readonly ProfileEditorModel profileForm = new();
+    private readonly ChangePasswordModel passwordForm = new();
+    private ProfileTab activeTab = ProfileTab.Profile;
     private string? userId;
     private bool isLoading = true;
+    private bool isSaving;
     private string? loadErrorMessage;
     private string? saveErrorMessage;
     private string? successMessage;
+    private string? dangerMessage;
+    private string? securityMessage;
+    private DateTime? profileUpdatedAt;
+
+    private string DisplayNameOrFallback => string.IsNullOrWhiteSpace(profileForm.DisplayName) ? "Your Profile" : profileForm.DisplayName;
+    private string AvatarLabel => string.IsNullOrWhiteSpace(profileForm.DisplayName) ? "U" : profileForm.DisplayName.Trim()[0].ToString().ToUpperInvariant();
+    private string UserHandle => string.IsNullOrWhiteSpace(profileForm.UserName) ? "@account" : $"@{profileForm.UserName.Trim().TrimStart('@')}";
+    private string ProfileBioOrFallback => string.IsNullOrWhiteSpace(profileForm.Bio)
+        ? "Add a short bio so others know who you are."
+        : profileForm.Bio;
+    private string LastUpdatedText => profileUpdatedAt is null
+        ? "Last updated: not saved in this session"
+        : $"Last updated: {profileUpdatedAt.Value.ToLocalTime():MMM d, yyyy h:mm tt}";
+
+    private enum ProfileTab
+    {
+        Profile,
+        Security,
+        DangerZone
+    }
+
+    private sealed class ProfileEditorModel
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Bio { get; set; } = string.Empty;
+    }
+
+    private sealed class ChangePasswordModel
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,8 +228,11 @@ else
             return;
         }
 
-        updateRequest.DisplayName = profile.DisplayName;
-        updateRequest.AvatarUrl = profile.AvatarUrl;
+        profileForm.DisplayName = profile.DisplayName;
+        profileForm.AvatarUrl = profile.AvatarUrl;
+        profileForm.UserName = profile.UserName;
+        profileForm.Email = profile.Email;
+        profileForm.Bio = profile.Bio;
         isLoading = false;
     }
 
@@ -82,20 +240,130 @@ else
     {
         saveErrorMessage = null;
         successMessage = null;
+        isSaving = true;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                saveErrorMessage = "Unable to resolve current user.";
+                return;
+            }
+
+            var updateRequest = new UpdateProfileRequest
+            {
+                DisplayName = profileForm.DisplayName,
+                AvatarUrl = profileForm.AvatarUrl,
+                UserName = profileForm.UserName,
+                Email = profileForm.Email,
+                Bio = profileForm.Bio
+            };
+
+            var updateResult = await UserService.UpdateUserProfileAsync(userId, updateRequest);
+            if (!updateResult.Succeeded)
+            {
+                saveErrorMessage = updateResult.Errors.FirstOrDefault() ?? "Unable to update profile.";
+                return;
+            }
+
+            profileUpdatedAt = DateTime.UtcNow;
+            successMessage = "Profile updated successfully.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private Task HandlePasswordUiSubmit()
+    {
+        securityMessage = null;
+
+        if (string.IsNullOrWhiteSpace(passwordForm.CurrentPassword)
+            || string.IsNullOrWhiteSpace(passwordForm.NewPassword)
+            || string.IsNullOrWhiteSpace(passwordForm.ConfirmPassword))
+        {
+            securityMessage = "Please complete all password fields.";
+            return Task.CompletedTask;
+        }
+
+        if (!string.Equals(passwordForm.NewPassword, passwordForm.ConfirmPassword, StringComparison.Ordinal))
+        {
+            securityMessage = "New password and confirmation do not match.";
+            return Task.CompletedTask;
+        }
 
         if (string.IsNullOrWhiteSpace(userId))
         {
-            saveErrorMessage = "Unable to resolve current user.";
-            return;
+            securityMessage = "Unable to resolve current user.";
+            return Task.CompletedTask;
         }
 
-        var isUpdated = await UserService.UpdateUserProfileAsync(userId, updateRequest);
-        if (!isUpdated)
+        return ChangePasswordInternalAsync();
+    }
+
+    private async Task ChangePasswordInternalAsync()
+    {
+        var passwordResult = await UserService.ChangePasswordAsync(userId!, passwordForm.CurrentPassword, passwordForm.NewPassword);
+        if (!passwordResult.Succeeded)
         {
-            saveErrorMessage = "Unable to update profile.";
+            securityMessage = passwordResult.Errors.FirstOrDefault() ?? "Unable to change password.";
             return;
         }
 
-        successMessage = "Profile updated successfully.";
+        passwordForm.CurrentPassword = string.Empty;
+        passwordForm.NewPassword = string.Empty;
+        passwordForm.ConfirmPassword = string.Empty;
+        securityMessage = "Password changed successfully.";
+    }
+
+    private async Task DeactivateAccountAsync()
+    {
+        dangerMessage = null;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            dangerMessage = "Unable to resolve current user.";
+            return;
+        }
+
+        var deactivateResult = await UserService.DeactivateAccountAsync(userId);
+        if (!deactivateResult.Succeeded)
+        {
+            dangerMessage = deactivateResult.Errors.FirstOrDefault() ?? "Unable to deactivate account.";
+            return;
+        }
+
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        dangerMessage = null;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            dangerMessage = "Unable to resolve current user.";
+            return;
+        }
+
+        var deleteResult = await UserService.DeleteAccountAsync(userId);
+        if (!deleteResult.Succeeded)
+        {
+            dangerMessage = deleteResult.Errors.FirstOrDefault() ?? "Unable to delete account.";
+            return;
+        }
+
+        NavigationManager.NavigateTo("/register", forceLoad: true);
+    }
+
+    private void SetActiveTab(ProfileTab tab)
+    {
+        activeTab = tab;
+    }
+
+    private string GetTabClass(ProfileTab tab)
+    {
+        return activeTab == tab ? "active" : string.Empty;
     }
 }

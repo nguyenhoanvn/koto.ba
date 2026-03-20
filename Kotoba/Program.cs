@@ -5,7 +5,10 @@ using Kotoba.Modules.Domain.Interfaces;
 using Kotoba.Modules.Infrastructure.Data;
 using Kotoba.Modules.Infrastructure.Repositories;
 using Kotoba.Modules.Infrastructure.Services.Conversations;
+using Kotoba.Modules.Infrastructure.Services.Attachments;
 using Kotoba.Modules.Infrastructure.Services.Identity;
+using Kotoba.Modules.Infrastructure.Services.Reactions;
+using Kotoba.Modules.Infrastructure.Services.Social;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -53,6 +56,8 @@ namespace Kotoba
                 options.AccessDeniedPath = "/login";
             });
 
+            builder.Services.AddScoped<IReactionService, ReactionService>();
+            builder.Services.AddScoped<IAttachmentService, AttachmentService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddSingleton<IPresenceService, PresenceService>();
             builder.Services.AddScoped<IPresenceBroadcastService, PresenceBroadcastService>();
@@ -60,6 +65,8 @@ namespace Kotoba
             builder.Services.AddScoped<ConversationParticipantRepository>();
             builder.Services.AddScoped<ConversationRepository>();
             builder.Services.AddScoped<UserProfileRepository>();
+            builder.Services.AddScoped<IStoryService, StoryService>();
+            builder.Services.AddScoped<ICurrentThoughtService, CurrentThoughtService>();
 
             var app = builder.Build();
 
@@ -80,6 +87,16 @@ namespace Kotoba
             app.UseHttpsRedirection();
 
             app.UseStaticFiles();
+            var uploadsPath = builder.Configuration["Attachments:UploadPath"]
+    ?? Path.Combine(app.Environment.ContentRootPath, "uploads");
+
+            Directory.CreateDirectory(uploadsPath);
+
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+                RequestPath = "/uploads"
+            });
             app.UseAntiforgery();
             app.UseAuthentication();
             app.UseAuthorization();
@@ -98,7 +115,9 @@ namespace Kotoba
 
                 var encodedErrors = Uri.EscapeDataString(string.Join("||", errors));
                 return Results.LocalRedirect($"/register?errors={encodedErrors}");
-            });
+            })
+            .AllowAnonymous()
+            .DisableAntiforgery();
 
             app.MapPost("/auth/login", async ([FromForm] LoginRequest request, IUserService userService) =>
             {
@@ -106,7 +125,9 @@ namespace Kotoba
                 return isLoggedIn
                     ? Results.LocalRedirect("/")
                     : Results.LocalRedirect("/login?error=1");
-            });
+            })
+            .AllowAnonymous()
+            .DisableAntiforgery();
 
             app.MapPost("/auth/logout", async (HttpContext httpContext) =>
             {
