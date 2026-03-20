@@ -111,7 +111,9 @@ namespace Kotoba
 
                 var encodedErrors = Uri.EscapeDataString(string.Join("||", errors));
                 return Results.LocalRedirect($"/register?errors={encodedErrors}");
-            });
+            })
+            .AllowAnonymous()
+            .DisableAntiforgery();
 
             app.MapPost("/auth/login", async ([FromForm] LoginRequest request, IUserService userService) =>
             {
@@ -119,7 +121,9 @@ namespace Kotoba
                 return isLoggedIn
                     ? Results.LocalRedirect("/")
                     : Results.LocalRedirect("/login?error=1");
-            });
+            })
+            .AllowAnonymous()
+            .DisableAntiforgery();
 
             app.MapPost("/auth/logout", async (HttpContext httpContext) =>
             {
