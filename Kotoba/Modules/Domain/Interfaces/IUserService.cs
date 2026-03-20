@@ -1,4 +1,4 @@
-﻿using Kotoba.Modules.Domain.DTOs;
+using Kotoba.Modules.Domain.DTOs;
 
 namespace Kotoba.Modules.Domain.Interfaces;
 
@@ -11,4 +11,5 @@ public interface IUserService
     Task<bool> LoginAsync(LoginRequest request);
     Task<UserProfile?> GetUserProfileAsync(string userId);
     Task<bool> UpdateUserProfileAsync(string userId, UpdateProfileRequest request);
+    IQueryable<UserProfile> GetUsersByDisplayNameAsync(string searchValue);
 }
