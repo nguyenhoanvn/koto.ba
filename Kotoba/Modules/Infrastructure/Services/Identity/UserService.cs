@@ -7,6 +7,9 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
 {
     public class UserService : IUserService
     {
+        private const string ProfileTokenProvider = "Kotoba.Profile";
+        private const string ProfileBioTokenName = "Bio";
+
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
 
@@ -99,24 +102,147 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
             return RegistrationResult.Success();
         }
 
-        public async Task<bool> UpdateUserProfileAsync(string userId, UpdateProfileRequest request)
+        public async Task<AccountOperationResult> UpdateUserProfileAsync(string userId, UpdateProfileRequest request)
         {
             if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(request.DisplayName))
             {
-                return false;
+                return AccountOperationResult.Failure(new[] { "Display name is required." });
             }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user is null)
             {
-                return false;
+                return AccountOperationResult.Failure(new[] { "User profile not found." });
             }
 
             user.DisplayName = request.DisplayName.Trim();
             user.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
 
+            var requestedUserName = string.IsNullOrWhiteSpace(request.UserName)
+                ? user.UserName ?? user.Email ?? user.Id
+                : request.UserName.Trim().TrimStart('@');
+
+            var requestedEmail = string.IsNullOrWhiteSpace(request.Email)
+                ? user.Email ?? string.Empty
+                : request.Email.Trim();
+
+            if (!string.Equals(user.UserName, requestedUserName, StringComparison.Ordinal))
+            {
+                var setUserNameResult = await _userManager.SetUserNameAsync(user, requestedUserName);
+                if (!setUserNameResult.Succeeded)
+                {
+                    return FromIdentityResult(setUserNameResult);
+                }
+            }
+
+            if (!string.Equals(user.Email, requestedEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                var setEmailResult = await _userManager.SetEmailAsync(user, requestedEmail);
+                if (!setEmailResult.Succeeded)
+                {
+                    return FromIdentityResult(setEmailResult);
+                }
+            }
+
             var updateResult = await _userManager.UpdateAsync(user);
-            return updateResult.Succeeded;
+            if (!updateResult.Succeeded)
+            {
+                return FromIdentityResult(updateResult);
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Bio))
+            {
+                await _userManager.RemoveAuthenticationTokenAsync(user, ProfileTokenProvider, ProfileBioTokenName);
+            }
+            else
+            {
+                await _userManager.SetAuthenticationTokenAsync(user, ProfileTokenProvider, ProfileBioTokenName, request.Bio.Trim());
+            }
+
+            return AccountOperationResult.Success();
+        }
+
+        public async Task<AccountOperationResult> ChangePasswordAsync(string userId, string currentPassword, string newPassword)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return AccountOperationResult.Failure(new[] { "Unable to resolve current user." });
+            }
+
+            if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                return AccountOperationResult.Failure(new[] { "Current and new password are required." });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+            {
+                return AccountOperationResult.Failure(new[] { "User profile not found." });
+            }
+
+            var changeResult = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if (!changeResult.Succeeded)
+            {
+                return FromIdentityResult(changeResult);
+            }
+
+            return AccountOperationResult.Success();
+        }
+
+        public async Task<AccountOperationResult> DeactivateAccountAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return AccountOperationResult.Failure(new[] { "Unable to resolve current user." });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+            {
+                return AccountOperationResult.Failure(new[] { "User profile not found." });
+            }
+
+            user.IsOnline = false;
+            user.LastSeenAt = DateTime.UtcNow;
+            user.LockoutEnabled = true;
+
+            var lockoutResult = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+            if (!lockoutResult.Succeeded)
+            {
+                return FromIdentityResult(lockoutResult);
+            }
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                return FromIdentityResult(updateResult);
+            }
+
+            await _signInManager.SignOutAsync();
+            return AccountOperationResult.Success();
+        }
+
+        public async Task<AccountOperationResult> DeleteAccountAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return AccountOperationResult.Failure(new[] { "Unable to resolve current user." });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+            {
+                return AccountOperationResult.Failure(new[] { "User profile not found." });
+            }
+
+            var deleteResult = await _userManager.DeleteAsync(user);
+            if (!deleteResult.Succeeded)
+            {
+                return FromIdentityResult(deleteResult);
+            }
+
+            await _signInManager.SignOutAsync();
+            return AccountOperationResult.Success();
         }
 
         private async Task<UserProfile?> GetUserProfileInternalAsync(string userId)
@@ -132,14 +258,39 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
                 return null;
             }
 
+            var bio = await _userManager.GetAuthenticationTokenAsync(user, ProfileTokenProvider, ProfileBioTokenName);
+
             return new UserProfile
             {
                 UserId = user.Id,
                 DisplayName = user.DisplayName,
                 AvatarUrl = user.AvatarUrl,
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                Bio = bio ?? string.Empty,
                 IsOnline = user.IsOnline,
                 LastSeenAt = user.LastSeenAt
             };
+        }
+
+        private static AccountOperationResult FromIdentityResult(IdentityResult result)
+        {
+            if (result.Succeeded)
+            {
+                return AccountOperationResult.Success();
+            }
+
+            var errors = result.Errors
+                .Select(error => error.Description)
+                .Where(description => !string.IsNullOrWhiteSpace(description))
+                .ToList();
+
+            if (errors.Count == 0)
+            {
+                errors.Add("Operation failed.");
+            }
+
+            return AccountOperationResult.Failure(errors);
         }
     }
 }
