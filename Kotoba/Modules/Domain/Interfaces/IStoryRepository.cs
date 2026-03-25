@@ -8,5 +8,7 @@ namespace Kotoba.Modules.Domain.Interfaces
         Task<Story?> AddAsync(Story story);
 
         Task<List<Story>> GetActiveAsync();
+
+        Task<List<Story>> GetActiveByUserIdAsync(string userId);
     }
 }
