@@ -19,7 +19,6 @@ namespace Kotoba.Modules.Hubs
             _reactionService = reactionService;
         }
 
-        // Join room theo conversationId
         public async Task JoinConversation(string conversationId)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, conversationId);
@@ -30,34 +29,60 @@ namespace Kotoba.Modules.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, conversationId);
         }
 
-        public async Task SendMessage(SendMessageRequest request)
+        public async Task SendMessage(string tempId, string conversationId, string senderId, string content, List<AttachmentDto> uploadedFiles)
         {
-            var userId = Context.UserIdentifier!;
             var message = new Message
             {
                 Id = Guid.NewGuid(),
-                ConversationId = request.ConversationId,
-                SenderId = userId,
-                Content = request.Content,
+                ConversationId = Guid.Parse(conversationId),
+                SenderId = senderId,
+                Content = content,
                 CreatedAt = DateTime.UtcNow
             };
             await _context.Messages.AddAsync(message);
+
+            var finalAttachmentDtos = new List<AttachmentDto>();
+            if (uploadedFiles != null && uploadedFiles.Any())
+            {
+                foreach (var file in uploadedFiles)
+                {
+                    var attachment = new Attachment
+                    {
+                        Id = Guid.NewGuid(),
+                        MessageId = message.Id,
+                        FileName = file.FileName,
+                        SavedName = Path.GetFileName(file.Url),
+                        ContentType = file.ContentType,
+                        Url = file.Url,
+                        Size = file.Size
+                    };
+                    _context.Attachments.Add(attachment);
+                    finalAttachmentDtos.Add(new AttachmentDto
+                    {
+                        Id = attachment.Id,
+                        FileName = attachment.FileName,
+                        ContentType = attachment.ContentType,
+                        Url = attachment.Url,
+                        Size = attachment.Size
+                    });
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             var dto = new MessageDto
             {
-                TempId = request.TempId,
+                TempId = tempId,
                 MessageId = message.Id,
-                SenderId = userId,
-                Content = request.Content,
-                ConversationId = request.ConversationId,
+                SenderId = senderId,
+                Content = content,
+                ConversationId = Guid.Parse(conversationId),
                 CreatedAt = message.CreatedAt,
-                Status = MessageStatus.Sent
+                Status = MessageStatus.Sent,
+                Attachments = finalAttachmentDtos
             };
 
-            await Clients
-                .Group(request.ConversationId.ToString())
-                .SendAsync("MessageConfirmed", dto, request.TempId);
+            await Clients.Group(conversationId).SendAsync("MessageConfirmed", dto, tempId);
         }
 
         public async Task ReactToMessage(Guid conversationId, Guid messageId, ReactionType reactionType)
@@ -88,17 +113,6 @@ namespace Kotoba.Modules.Hubs
                 .SendAsync("ReactionRemoved", new { messageId, userId });
         }
 
-        private async Task AssertParticipantAsync(Guid conversationId, string userId)
-        {
-            var isParticipant = await _context.ConversationParticipants
-                .AnyAsync(p => p.ConversationId == conversationId
-                            && p.UserId == userId
-                            && p.IsActive);
-
-            if (!isParticipant)
-                throw new HubException("Access denied.");
-        }
-
         public async Task SendTyping(Guid conversationId)
         {
             var userId = Context.UserIdentifier!;
@@ -123,6 +137,32 @@ namespace Kotoba.Modules.Hubs
                     UserId = userId,
                     IsTyping = false
                 });
+        }
+
+        private async Task AssertParticipantAsync(Guid conversationId, string userId)
+        {
+            var isParticipant = await _context.ConversationParticipants
+                .AnyAsync(p => p.ConversationId == conversationId
+                            && p.UserId == userId
+                            && p.IsActive);
+
+            if (!isParticipant)
+                throw new HubException("Access denied.");
+        }
+
+        private string GetContentType(string fileName)
+        {
+            var ext = Path.GetExtension(fileName).ToLower();
+            return ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                ".pdf" => "application/pdf",
+                ".zip" => "application/zip",
+                _ => "application/octet-stream"
+            };
         }
     }
 }

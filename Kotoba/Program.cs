@@ -29,6 +29,8 @@ namespace Kotoba
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
+            builder.Services.AddHttpClient();
+
             builder.Services.AddSignalR(options =>
             {
                 options.EnableDetailedErrors = true; 
@@ -101,16 +103,19 @@ namespace Kotoba
             app.UseHttpsRedirection();
 
             app.UseStaticFiles();
-            var uploadsPath = builder.Configuration["Attachments:UploadPath"]
-    ?? Path.Combine(app.Environment.ContentRootPath, "uploads");
 
-            Directory.CreateDirectory(uploadsPath);
+            var uploadsPath = builder.Configuration["Attachments:UploadPath"] ?? "uploads";
+            if (!Directory.Exists(uploadsPath))
+                Directory.CreateDirectory(uploadsPath);
 
             app.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+                    Path.Combine(Directory.GetCurrentDirectory(), uploadsPath)
+                ),
                 RequestPath = "/uploads"
             });
+
             app.UseAntiforgery();
             app.UseAuthentication();
             app.UseAuthorization();
@@ -151,6 +156,7 @@ namespace Kotoba
 
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
+
 
             app.MapHub<ChatHub>("/chathub");
 

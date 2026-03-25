@@ -9,91 +9,36 @@ namespace Kotoba.Modules.Infrastructure.Services.Attachments
 {
     public class AttachmentService : IAttachmentService
     {
-        private readonly KotobaDbContext _context;
-        private readonly string _uploadBasePath;
+        private readonly string _uploadPath;
 
-        public AttachmentService(KotobaDbContext context, IConfiguration configuration)
+        public AttachmentService(IConfiguration config)
         {
-            _context = context;
-
-
-            _uploadBasePath = configuration["Attachments:UploadPath"]
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+            _uploadPath = config["Attachments:UploadPath"] ?? "uploads";
+            if (!Directory.Exists(_uploadPath))
+            {
+                Directory.CreateDirectory(_uploadPath);
+            }
         }
 
-        private static FileType ResolveFileType(string contentType) => contentType switch
+        // Đổi return type sang AttachmentDto, không truyền messageId ảo vào nữa
+        public async Task<AttachmentDto> SaveFilePhysicalAsync(Stream stream, string fileName, string contentType)
         {
-            var ct when ct.StartsWith("image/") => FileType.Image,
-            var ct when ct.StartsWith("video/") => FileType.Video,
-            var ct when ct.StartsWith("audio/") => FileType.Audio,
-            var ct when ct.StartsWith("document/") => FileType.Document,
-            _ => FileType.Document
-        };
+            var ext = Path.GetExtension(fileName);
+            var savedName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(_uploadPath, savedName);
 
-        public async Task<AttachmentDto?> UploadAttachmentAsync(UploadAttachmentRequest request)
-        {
-            var messageExists = await _context.Messages
-                .AnyAsync(m => m.Id == request.MessageId && !m.IsDeleted);
+            await using var fs = File.Create(filePath);
+            await stream.CopyToAsync(fs);
+            var size = fs.Length;
 
-            if (!messageExists) return null;
-
-            Directory.CreateDirectory(_uploadBasePath);
-
-            var safeOriginalName = Path.GetFileName(request.FileName);
-            var extension = Path.GetExtension(safeOriginalName);
-            var storedFileName = $"{Guid.NewGuid()}{extension}";
-            var filePath = Path.Combine(_uploadBasePath, storedFileName);
-
-            long fileSize;
-            await using (var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                await request.FileStream.CopyToAsync(fs);
-                fileSize = fs.Length;
-            }
-
-            // Public URL served by the static files middleware: app.UseStaticFiles()
-            // Requires wwwroot/uploads (or a custom StaticFileOptions path mapping)
-            var fileUrl = $"/uploads/{storedFileName}";
-
-            var attachment = new Attachment
-            {
-                Id = Guid.NewGuid(),
-                MessageId = request.MessageId,
-                FileName = safeOriginalName,
-                FileType = ResolveFileType(request.ContentType),
-                FileUrl = fileUrl,
-                FileSizeBytes = fileSize,
-                UploadedAt = DateTime.UtcNow
-            };
-
-            _context.Attachments.Add(attachment);
-            await _context.SaveChangesAsync();
-
+            // Chỉ trả về thông tin file đã lưu, KHÔNG lưu DB ở đây
             return new AttachmentDto
             {
-                AttachmentId = attachment.Id,
-                MessageId = attachment.MessageId,
-                FileName = attachment.FileName,
-                FileType = attachment.FileType,
-                FileUrl = attachment.FileUrl
+                FileName = fileName,
+                ContentType = contentType,
+                Url = $"/uploads/{savedName}", // Thư mục public ảo của bạn
+                Size = size
             };
         }
-
-        public async Task<List<AttachmentDto>> GetAttachmentsAsync(Guid messageId)
-        {
-            return await _context.Attachments
-                .Where(a => a.MessageId == messageId)
-                .OrderBy(a => a.UploadedAt)
-                .Select(a => new AttachmentDto
-                {
-                    AttachmentId = a.Id,
-                    MessageId = a.MessageId,
-                    FileName = a.FileName,
-                    FileType = a.FileType,
-                    FileUrl = a.FileUrl
-                })
-                .ToListAsync();
-        }
-
     }
 }
