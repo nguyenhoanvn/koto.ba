@@ -36,9 +36,26 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                     .Include(s => s.User)
                     .Where(s => s.ExpiresAt > now)
                     .OrderByDescending(s => s.CreatedAt)
-                    .Select(s => s)
+                    .GroupBy(s => s.UserId)
+                    .Select(g => g.First())
                     .ToListAsync();
             } 
+        }
+
+        public async Task<List<Story>> GetActiveByUserIdAsync(string userId)
+        {
+            using (var context = await _dbFactory.CreateDbContextAsync())
+            {
+                var now = DateTime.UtcNow;
+
+                return await context.Stories
+                    .AsNoTracking()
+                    .Include(s => s.User)
+                    .Where(s => s.ExpiresAt > now)
+                    .Where(s => s.UserId == userId)
+                    .OrderBy(s => s.CreatedAt)
+                    .ToListAsync();
+            }
         }
     }
 }
