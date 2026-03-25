@@ -139,19 +139,19 @@ namespace Kotoba.Modules.Infrastructure.Services.Realtime
             return result;
         }
 
-        public async Task SendMessage(SendMessageRequest request)
-        {
-            var userId = Context.UserIdentifier!;
-            request.SenderId = userId;
+        //public async Task SendMessage(SendMessageRequest request)
+        //{
+        //    var userId = Context.UserIdentifier!;
+        //    request.SenderId = userId;
 
-            var message = await _messageService.SendMessageAsync(request);
-            if (message == null)
-                throw new HubException("Access denied or conversation not found.");
+        //    var message = await _messageService.SendMessageAsync(request);
+        //    if (message == null)
+        //        throw new HubException("Access denied or conversation not found.");
 
-            await Clients
-                .Group(request.ConversationId.ToString())
-                .SendAsync("MessageConfirmed", message, request.TempId);
-        }
+        //    await Clients
+        //        .Group(request.ConversationId.ToString())
+        //        .SendAsync("MessageConfirmed", message, request.TempId);
+        //}
 
         public async Task ReactToMessage(Guid conversationId, Guid messageId, ReactionType reactionType)
         {

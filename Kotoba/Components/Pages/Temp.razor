@@ -1,0 +1,211 @@
+@inject IConversationService conversationService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+@using Kotoba.Modules.Domain.Enums
+
+@if (selectedConv != null)
+{
+    <div class="chat-main">
+        <div class="chat-header">
+            <div class="chat-header-avatar">
+                🌿
+                <div class="header-online"></div>
+            </div>
+            <div class="chat-header-info">
+                <div class="chat-header-name">@groupName</div>
+                <div class="chat-header-status">● Online</div>
+            </div>
+        </div>
+
+        <div class="messages-area" id="msgArea">
+            <div class="msg-date-divider">Today</div>
+
+            @foreach (var msg in messages)
+            {
+                var isOwn = msg.SenderId == currentUserId;
+                <div class="msg-group @(isOwn ? "own" : "")">
+                    <div class="msg-row @(isOwn ? "own" : "")">
+                        @if (!isOwn)
+                        {
+                            <div class="msg-avatar-sm">🌿</div>
+                        }
+                    <div class="msg-bubble @(msg.Status == MessageStatus.Pending ? "sending" : "")">
+                        @msg.Content
+                    </div>
+                </div>
+                <div class="msg-meta" style="@(isOwn ? "" : "margin-left:36px")">
+                    <span class="msg-time">
+                        @(msg.Status == MessageStatus.Pending
+                                            ? "Sending..."
+                                            : msg.CreatedAt.ToLocalTime().ToString("hh:mm tt"))
+                </span>
+                @if (isOwn)
+                        {
+                            <span class="msg-check">
+                                @(msg.Status == MessageStatus.Pending ? "🕐" : "✓")
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="input-area">
+            <div class="input-toolbar">
+                <textarea class="msg-input"
+                          placeholder="Type a message…"
+                          rows="1"
+                          @bind="newMessageText"
+                          @bind:event="oninput"
+                          @onkeydown="HandleKeyDown"></textarea>
+                <button class="send-btn" @onclick="SendMessage" title="Send"
+                        disabled="@(hubConnection?.State != HubConnectionState.Connected)">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="chat-main" style="display:flex;align-items:center;justify-content:center">
+        <p style="color:var(--muted)">Select a conversation</p>
+    </div>
+}
+
+<style>
+    .msg-bubble.sending {
+        opacity: 0.6;
+    }
+</style>
+
+@code {
+    [Parameter] public string? ConversationId { get; set; }
+    [Parameter] public string? currentUserId { get; set; }
+
+    private ConversationDto? selectedConv;
+    private List<UserProfile>? selectedUsers;
+    private string? groupName;
+    private List<MessageDto> messages = new();
+    private string newMessageText = string.Empty;
+    private HubConnection? hubConnection;
+    private string _loadedConvId = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(ConversationId) || _loadedConvId == ConversationId) return;
+        await LoadConversationAsync();
+    }
+
+    private async Task LoadConversationAsync()
+    {
+        // Leave room cũ trước
+        if (hubConnection?.State == HubConnectionState.Connected && !string.IsNullOrEmpty(_loadedConvId))
+            await hubConnection.InvokeAsync("LeaveConversation", _loadedConvId);
+
+        _loadedConvId = ConversationId!;
+        messages = new();
+
+        selectedConv = await conversationService.GetConversationDetailAsync(ConversationId!);
+        if (selectedConv == null) return;
+
+        selectedUsers = await conversationService.GetOtherUsersInConversationsAsync(ConversationId!, currentUserId!);
+        groupName = selectedConv.Type == ConversationType.Group
+            ? selectedConv.GroupName
+            : (selectedUsers.Count == 0 ? "You" : selectedUsers[0].DisplayName);
+
+        // Tạo hub 1 lần duy nhất, chỉ đổi room
+        if (hubConnection == null)
+            await StartHubAsync();
+
+        // Join room mới
+        await hubConnection!.InvokeAsync("JoinConversation", ConversationId);
+
+        StateHasChanged();
+    }
+
+    private async Task StartHubAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<MessageDto>("ReceiveMessage", (msg) =>
+        {
+            // Nếu là tin nhắn mình gửi → tìm tin "Sending" và update thành Sent
+            var existing = messages.FirstOrDefault(m => m.TempId == msg.TempId);
+            if (existing != null)
+            {
+                existing.MessageId = msg.MessageId;
+                existing.CreatedAt = msg.CreatedAt;
+                existing.Status = MessageStatus.Sent;
+            }
+            else
+            {
+                // Tin nhắn từ người khác → thêm mới
+                messages.Add(msg);
+            }
+
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessageText)) return;
+        if (hubConnection?.State != HubConnectionState.Connected) return;
+
+        var tempId = Guid.NewGuid().ToString();
+        var content = newMessageText;
+        newMessageText = string.Empty;
+
+        // ✅ Hiện ngay lập tức với trạng thái Sending
+        messages.Add(new MessageDto
+        {
+            TempId = tempId,
+            SenderId = currentUserId!,
+            Content = content,
+            ConversationId = Guid.Parse(ConversationId!),
+            CreatedAt = DateTime.UtcNow,
+            Status = MessageStatus.Pending
+        });
+        StateHasChanged();
+
+        try
+        {
+            // Gửi lên server → lưu DB → broadcast lại → cập nhật thành Sent
+            await hubConnection.InvokeAsync("SendMessage", tempId, ConversationId, currentUserId, content);
+        }
+        catch (Exception ex)
+        {
+            // Nếu lỗi → đánh dấu Failed
+            var failed = messages.FirstOrDefault(m => m.TempId == tempId);
+            if (failed != null) failed.Status = MessageStatus.Failed;
+            StateHasChanged();
+            Console.Error.WriteLine(ex);
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendMessage();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            if (!string.IsNullOrEmpty(_loadedConvId))
+                await hubConnection.InvokeAsync("LeaveConversation", _loadedConvId);
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

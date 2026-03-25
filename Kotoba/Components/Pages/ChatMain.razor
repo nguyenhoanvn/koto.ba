@@ -1,10 +1,12 @@
 @inject IConversationService conversationService
+@inject IAttachmentService attachmentService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
 @using Microsoft.AspNetCore.SignalR.Client
 @using Kotoba.Modules.Domain.Enums
 @inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
 
 <style>
 
@@ -812,6 +814,91 @@
             color: var(--lime);
             background: var(--lime-pale);
         }
+
+    .pending-strip {
+        padding: 10px 12px 8px; /* thêm padding-bottom */
+        display: flex;
+        padding-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 8px;
+        border-bottom: 0.5px solid rgba(0,0,0,0.08); /* đường kẻ ngăn cách */
+    }
+
+    .att-chip {
+        display: flex;
+        align-items: center;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 0.5px solid rgba(0,0,0,0.12);
+        background: var(--bg-secondary, #f5f5f3);
+        height: 48px;
+        max-width: 210px;
+        transition: border-color .15s;
+    }
+
+        .att-chip:hover {
+            border-color: rgba(0,0,0,0.25);
+        }
+
+    .att-thumb {
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+        flex-shrink: 0;
+        display: block;
+    }
+
+    .att-thumb-placeholder {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #E6F1FB;
+        flex-shrink: 0;
+    }
+
+    .att-info {
+        padding: 0 8px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .att-name {
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 110px;
+    }
+
+    .att-size {
+        font-size: 11px;
+        color: #888;
+        margin-top: 1px;
+    }
+
+    .att-remove {
+        width: 28px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        color: #aaa;
+        border-left: 0.5px solid rgba(0,0,0,0.08);
+        transition: color .1s;
+        background: transparent;
+        border-top: none;
+        border-right: none;
+        border-bottom: none;
+    }
+
+        .att-remove:hover {
+            color: #c0392b;
+        }
 </style>
 @if (selectedConv != null)
 {
@@ -834,13 +921,11 @@
             </div>
         </div>
 
-        <div class="messages-area" id="msgArea">
         <div class="messages-area" id="msgArea" @ref="msgAreaRef">
             <div class="msg-date-divider">Today, March 14</div>
 
             @foreach (var msg in messages)
             {
-                        <div class="msg-avatar-sm">🌿</div>
                 var isOwn = msg.SenderId == currentUserId;
                 <div class="msg-group @(isOwn ? "own" : "")">
                     <div class="msg-row @(isOwn ? "own" : "")">
@@ -849,8 +934,31 @@
                             <div class="msg-avatar-sm">🌿</div>
                         }
                         <div class="msg-bubble @(msg.Status == MessageStatus.Pending ? "sending" : "")">
-                            @msg.Content
-                        </div>
+                            @if (!string.IsNullOrWhiteSpace(msg.Content))
+                            {
+                                <div class="msg-text">@msg.Content</div>
+                            }
+
+                            @if (msg.Attachments != null && msg.Attachments.Any())
+                            {
+                                <div class="msg-attachments" style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+                                    @foreach (var att in msg.Attachments)
+                                    {
+                                        if (att.ContentType.StartsWith("image/"))
+                                        {
+                                            <img src="@att.Url" alt="@att.FileName" style="max-width: 200px; border-radius: 8px; cursor: pointer;" @onclick="() => OpenImage(att.Url)" />
+                                        }
+                                        else
+                                        {
+                                            <a href="@att.Url" target="_blank" class="msg-file-link" style="display: flex; align-items: center; gap: 4px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 4px; text-decoration: none; color: inherit;">
+                                                <span>📎</span>
+                                                <span>@att.FileName</span>
+                                            </a>
+                                        }
+                                    }
+                                </div>
+                            }
+                    </div>
                     </div>
                     <div class="msg-meta" style="@(isOwn ? "" : "margin-left:36px")">
                         <span class="msg-time">
@@ -870,11 +978,65 @@
         </div>
 
         <div class="input-area">
+            @* Preview *@
+            @if (pendingFile != null || pendingImages.Any())
+            {
+                <div class="pending-strip">
+                    @if (pendingFile != null)
+                    {
+                        <div class="att-chip">
+                            <div class="att-thumb-placeholder">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#378ADD" stroke-width="1.5" stroke-linecap="round">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                            </div>
+                            <div class="att-info">
+                                <div class="att-name">@pendingFile.FileName</div>
+                                <div class="att-size">@FormatSize(pendingFile.Buffer?.Length ?? 0)</div>
+                            </div>
+                            <button class="att-remove" @onclick="RemoveFile">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                    <line x1="2" y1="2" x2="10" y2="10" />
+                                    <line x1="10" y1="2" x2="2" y2="10" />
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                    @foreach (var img in pendingImages)
+                    {
+                        <div class="att-chip">
+                            <img class="att-thumb" src="@img.PreviewUrl" alt="@img.FileName" />
+                            <div class="att-info">
+                                <div class="att-name">@img.FileName</div>
+                                <div class="att-size">@FormatSize(img.Buffer?.Length ?? 0)</div>
+                            </div>
+                            <button class="att-remove" @onclick="() => RemoveImage(img)">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                    <line x1="2" y1="2" x2="10" y2="10" />
+                                    <line x1="10" y1="2" x2="2" y2="10" />
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
             <div class="input-toolbar">
                 <button class="input-tool-btn" title="Emoji"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><path d="M8 13s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" /></svg></button>
-                <button class="input-tool-btn" title="Attach"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" /></svg></button>
-                <button class="input-tool-btn" title="Image"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg></button>
-                <textarea class="msg-input" placeholder="Type a message…" rows="1" id="msgInput" @bind="newMessageText"></textarea>
+                <label for="filePicker" class="input-tool-btn" title="Attach">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" /></svg>
+                </label>
+                <InputFile id="filePicker" OnChange="OnFileSelected" style="display: none;" />
+
+                <label for="imagePicker" class="input-tool-btn" title="Image">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                </label>
+                <InputFile id="imagePicker" OnChange="OnImagesSelected" multiple accept="image/*" style="display: none;" />
+                <textarea class="msg-input" placeholder="Type a message…" rows="1"
+                          id="msgInput"
+                          @bind="newMessageText"
+                          @bind:event="oninput"
+                          @onkeydown="HandleKeyDown"></textarea>
                 <button class="input-tool-btn" title="Voice"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" /><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" /></svg></button>
                 <button class="send-btn" id="sendButton" @onclick="SendMessage" title="Send"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg></button>
             </div>
@@ -883,6 +1045,16 @@
 }
 
 @code {
+    private class PendingFile
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public string PreviewUrl { get; set; } = string.Empty;
+        public byte[]? Buffer { get; set; } // ✅ thêm field này
+        public IBrowserFile File { get; set; } = null!;
+        public bool IsImage => ContentType.StartsWith("image/");
+    }
+
     [Parameter] public string? ConversationId { get; set; } = string.Empty;
     [Parameter] public string? currentUserId { get; set; } = string.Empty;
 
@@ -890,9 +1062,13 @@
     private List<UserProfile>? selectedUsers;
     private string? groupName;
     private List<MessageDto> messages = new();
-    private string newMessageText = string.Empty;    
+    private string newMessageText = string.Empty;
     private HubConnection? hubConnection;
     private string _loadedConvId = string.Empty;
+
+    // ✅ 1 file, nhiều ảnh
+    private PendingFile? pendingFile = null;
+    private List<PendingFile> pendingImages = new();
 
     private ElementReference msgAreaRef;
 
@@ -908,7 +1084,7 @@
             await hubConnection.InvokeAsync("LeaveConversation", _loadedConvId);
 
         _loadedConvId = ConversationId!;
-        
+
         if (hubConnection is not null)
         {
             await hubConnection.DisposeAsync();
@@ -916,6 +1092,8 @@
         }
 
         messages = new();
+        pendingFile = null;
+        pendingImages.Clear();
 
         selectedConv = await conversationService.GetConversationDetailAsync(ConversationId!);
         if (selectedConv == null) return;
@@ -927,10 +1105,9 @@
 
         messages = await conversationService.GetMessagesAsync(ConversationId!);
 
-        if (hubConnection == null)
-            await StartHubAsync();
-
+        await StartHubAsync();
         await hubConnection!.InvokeAsync("JoinConversation", ConversationId);
+
         StateHasChanged();
         await ScrollToBottom();
     }
@@ -942,36 +1119,108 @@
             .WithAutomaticReconnect()
             .Build();
 
-        hubConnection.On<MessageDto>("ReceiveMessage", (msg) =>
+        hubConnection.On<MessageDto>("ReceiveMessage", async (msg) =>
         {
-            var existing = messages.FirstOrDefault(m => m.TempId == msg.TempId);
-            if (existing != null)
+            await InvokeAsync(async () =>
             {
-                existing.MessageId = msg.MessageId;
-                existing.CreatedAt = msg.CreatedAt;
-                existing.Status = MessageStatus.Sent;
-            }
-            else
-            {                
-                messages.Add(msg);
-            }
+                var existing = messages.FirstOrDefault(m => m.TempId == msg.TempId);
+                if (existing != null)
+                {
+                    // Tin mình gửi → update Sending → Sent + gắn attachments thật từ server
+                    existing.MessageId = msg.MessageId;
+                    existing.CreatedAt = msg.CreatedAt;
+                    existing.Status = MessageStatus.Sent;
+                    existing.Attachments = msg.Attachments; // ✅ thay preview bằng URL thật
+                }
+                else
+                {
+                    // Tin người khác
+                    messages.Add(msg);
+                }
 
-            InvokeAsync(StateHasChanged);            
+                StateHasChanged();
+                await ScrollToBottom();
+            });
         });
 
         try { await hubConnection.StartAsync(); }
         catch (Exception ex) { Console.Error.WriteLine(ex); }
     }
 
+    // ===== FILE PICKERS =====    
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        pendingFile = new PendingFile
+        {
+            FileName = file.Name,
+            ContentType = file.ContentType,
+            File = file
+        };
+        StateHasChanged();
+    }
+
+    private async Task OnImagesSelected(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(10))
+        {
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
+            var buffer = ms.ToArray(); // ✅ đảm bảo đọc hết
+
+            pendingImages.Add(new PendingFile
+            {
+                FileName = file.Name,
+                ContentType = file.ContentType,
+                File = file,
+                Buffer = buffer,
+                PreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}"
+            });
+        }
+        StateHasChanged();
+    }
+
+    private void RemoveFile() { pendingFile = null; StateHasChanged(); }
+    private void RemoveImage(PendingFile img) { pendingImages.Remove(img); StateHasChanged(); }
+
+    // ===== SEND =====
     private async Task SendMessage()
     {
-        if (string.IsNullOrWhiteSpace(newMessageText)) return;
+        var hasText = !string.IsNullOrWhiteSpace(newMessageText);
+        var hasFiles = pendingFile != null || pendingImages.Any();
+        if (!hasText && !hasFiles) return;
         if (hubConnection?.State != HubConnectionState.Connected) return;
 
         var tempId = Guid.NewGuid().ToString();
         var content = newMessageText;
         newMessageText = string.Empty;
-        
+
+        // Preview attachments hiện ngay
+        var previewAttachments = new List<AttachmentDto>();
+        if (pendingFile != null)
+            previewAttachments.Add(new AttachmentDto
+            {
+                FileName = pendingFile.FileName,
+                ContentType = pendingFile.ContentType,
+                Url = string.Empty
+            });
+        foreach (var img in pendingImages)
+            previewAttachments.Add(new AttachmentDto
+            {
+                FileName = img.FileName,
+                ContentType = img.ContentType,
+                Url = img.PreviewUrl // preview tạm
+            });
+
+        var fileToUpload = pendingFile;
+        var imagesToUpload = pendingImages.ToList();
+        pendingFile = null;
+        pendingImages.Clear();
+
+        // Hiện Sending ngay lập tức
         messages.Add(new MessageDto
         {
             TempId = tempId,
@@ -979,19 +1228,38 @@
             Content = content,
             ConversationId = Guid.Parse(ConversationId!),
             CreatedAt = DateTime.UtcNow,
-            Status = MessageStatus.Pending
+            Status = MessageStatus.Pending,
+            Attachments = previewAttachments
         });
         StateHasChanged();
         await ScrollToBottom();
 
+        // Thay thế đoạn try-catch trong hàm SendMessage của bạn bằng đoạn này:
+
         try
         {
-            // Gửi lên server → lưu DB → broadcast lại → cập nhật thành Sent
-            await hubConnection.InvokeAsync("SendMessage", tempId, ConversationId, currentUserId, content);
+            var uploadedFiles = new List<AttachmentDto>();
+
+            // 1. Chỉ lưu file vật lý xuống ổ cứng và lấy thông tin
+            if (fileToUpload != null)
+            {
+                using var stream = fileToUpload.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                var fileDto = await attachmentService.SaveFilePhysicalAsync(stream, fileToUpload.FileName, fileToUpload.ContentType);
+                uploadedFiles.Add(fileDto);
+            }
+
+            foreach (var img in imagesToUpload)
+            {
+                using var stream = new MemoryStream(img.Buffer!);
+                var fileDto = await attachmentService.SaveFilePhysicalAsync(stream, img.FileName, img.ContentType);
+                uploadedFiles.Add(fileDto);
+            }
+
+            // 2. Gửi Hub toàn bộ thông tin
+            await hubConnection.InvokeAsync("SendMessage", tempId, ConversationId, currentUserId, content, uploadedFiles);
         }
         catch (Exception ex)
         {
-            // Nếu lỗi → đánh dấu Failed
             var failed = messages.FirstOrDefault(m => m.TempId == tempId);
             if (failed != null) failed.Status = MessageStatus.Failed;
             StateHasChanged();
@@ -1005,18 +1273,29 @@
             await SendMessage();
     }
 
-    public async ValueTask DisposeAsync()
+    private string FormatSize(long bytes)
     {
-        if (hubConnection is not null)
-            await hubConnection.DisposeAsync();
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024} KB";
+        return $"{bytes / (1024 * 1024)} MB";
     }
+
+    private async Task OpenImage(string url)
+        => await JS.InvokeVoidAsync("window.open", url, "_blank");
 
     private async Task ScrollToBottom()
     {
-        try
-        {
-            await JS.InvokeVoidAsync("scrollToBottom", msgAreaRef);
-        }
+        try { await JS.InvokeVoidAsync("scrollToBottom", msgAreaRef); }
         catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            if (!string.IsNullOrEmpty(_loadedConvId))
+                try { await hubConnection.InvokeAsync("LeaveConversation", _loadedConvId); } catch { }
+            await hubConnection.DisposeAsync();
+        }
     }
 }

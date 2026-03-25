@@ -85,11 +85,9 @@ namespace Kotoba.Modules.Infrastructure.Services.Messages
                     }).ToList(),
                     Attachments = m.Attachments.Select(a => new AttachmentDto
                     {
-                        AttachmentId = a.Id,
+                        Id = a.Id,
                         MessageId = a.MessageId,
-                        FileName = a.FileName,
-                        FileType = a.FileType,
-                        FileUrl = a.FileUrl
+                        FileName = a.FileName                       
                     }).ToList()
                 })
                 .ToList();

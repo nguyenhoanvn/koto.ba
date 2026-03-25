@@ -19,7 +19,7 @@ namespace Kotoba.Modules.Infrastructure.Data
         public DbSet<Attachment> Attachments => Set<Attachment>();
         public DbSet<Story> Stories => Set<Story>();
         public DbSet<CurrentThought> CurrentThoughts => Set<CurrentThought>();
-
+        public DbSet<Attachment> Attachment => Set<Attachment>();
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -112,19 +112,19 @@ namespace Kotoba.Modules.Infrastructure.Data
                 entity.HasIndex(r => new { r.MessageId, r.UserId }).IsUnique();
             });
 
-            modelBuilder.Entity<Attachment>(entity =>
-            {
-                entity.ToTable("Attachments");
-                entity.HasKey(a => a.Id);
-                entity.Property(a => a.FileName).HasMaxLength(260);
-                entity.Property(a => a.FileUrl).HasMaxLength(1000);
-                entity.Property(a => a.FileType).HasConversion<string>().HasMaxLength(40);
+            //modelBuilder.Entity<Attachment>(entity =>
+            //{
+            //    entity.ToTable("Attachments");
+            //    entity.HasKey(a => a.Id);
+            //    entity.Property(a => a.FileName).HasMaxLength(260);
+            //    entity.Property(a => a.FileUrl).HasMaxLength(1000);
+            //    entity.Property(a => a.FileType).HasConversion<string>().HasMaxLength(40);
 
-                entity.HasOne(a => a.Message)
-                    .WithMany(m => m.Attachments)
-                    .HasForeignKey(a => a.MessageId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
+            //    entity.HasOne(a => a.Message)
+            //        .WithMany(m => m.Attachments)
+            //        .HasForeignKey(a => a.MessageId)
+            //        .OnDelete(DeleteBehavior.Cascade);
+            //});
 
             modelBuilder.Entity<Story>(entity =>
             {

@@ -113,6 +113,7 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                 .Where(m => m.ConversationId == conversationId && !m.IsDeleted)
                 .OrderBy(m => m.CreatedAt)
                 .Include(m => m.Sender)
+                .Include(m => m.Attachments)
                 .Select(m => new MessageDto
                 {
                     TempId = m.Id.ToString(),
@@ -121,7 +122,15 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                     Content = m.Content,
                     ConversationId = conversationId,
                     CreatedAt = m.CreatedAt,
-                    Status = MessageStatus.Sent
+                    Status = MessageStatus.Sent,
+                    Attachments = m.Attachments.Select(a => new AttachmentDto
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                        ContentType = a.ContentType,
+                        Url = a.Url,
+                        Size = a.Size
+                    }).ToList()
                 })
                 .ToListAsync();
         }
