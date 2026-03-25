@@ -25,11 +25,11 @@
 body {
     font-family: 'DM Sans',sans-serif;
     background: var(--bg);
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     color: var(--text);
-    max-height: 100vh;
 }
 
 .sidebar-nav {
