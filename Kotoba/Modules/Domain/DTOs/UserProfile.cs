@@ -1,4 +1,4 @@
-﻿namespace Kotoba.Modules.Domain.DTOs;
+namespace Kotoba.Modules.Domain.DTOs;
 
 public class UserProfile
 {
@@ -10,4 +10,5 @@ public class UserProfile
     public string Bio { get; set; } = string.Empty;
     public bool IsOnline { get; set; }
     public DateTime? LastSeenAt { get; set; }
+    public string? CurrentThought { get; set; }
 }

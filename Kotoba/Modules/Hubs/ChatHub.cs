@@ -12,11 +12,12 @@ namespace Kotoba.Modules.Hubs
     {
         private readonly KotobaDbContext _context;
         private readonly IReactionService _reactionService;
-
-        public ChatHub(KotobaDbContext context, IReactionService reactionService)
+        private readonly ICurrentThoughtService _thoughtService;
+        public ChatHub(KotobaDbContext context, IReactionService reactionService, ICurrentThoughtService thoughtService)
         {
             _context = context;
             _reactionService = reactionService;
+            _thoughtService = thoughtService;
         }
 
         public async Task JoinConversation(string conversationId)
@@ -137,6 +138,12 @@ namespace Kotoba.Modules.Hubs
                     UserId = userId,
                     IsTyping = false
                 });
+        }
+        public async Task UpdateThought(string content)
+        {
+            var userId = Context.UserIdentifier!;
+            await _thoughtService.SetThoughtAsync(userId, content);
+            await Clients.All.SendAsync("ThoughtUpdated", new { userId, content });
         }
 
         private async Task AssertParticipantAsync(Guid conversationId, string userId)
