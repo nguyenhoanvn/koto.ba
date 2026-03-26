@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @inject IConversationService conversationService
 @using Kotoba.Modules.Infrastructure.Services.Conversations
+@using Kotoba.Modules.Infrastructure.Services.Notifications
 @using Kotoba.Modules.Domain.Entities
 @using Kotoba.Modules.Domain.Enums
 @using Kotoba.Modules.Infrastructure.Data
@@ -12,6 +13,7 @@
 @using Kotoba.Modules.Domain.Interfaces
 @implements IAsyncDisposable
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ChatNotificationState NotifState
 @using Microsoft.AspNetCore.SignalR.Client
 <style>
 	:root {
@@ -856,6 +858,19 @@
 			color: var(--lime);
 			background: var(--lime-pale);
 		}
+
+		.avatar-ring {
+			position: relative;
+		}
+
+		.avatar-ring::after {
+			content: '';
+			position: absolute;
+			inset: -3px;              /* controls thickness gap */
+			border-radius: 50%;
+			border: 2px solid var(--lime);
+			pointer-events: none;
+		}
 </style>
 
 <script>
@@ -1030,6 +1045,7 @@
 			 @onclick='()=>activeFilter="groups"'>
 			Groups
 		</div>
+
 	</div>
 	<div class="chat-list">
 		@* Search Users Result *@
@@ -1066,7 +1082,7 @@
 				<div class="chat-item" @onclick="() => SelectConversation(conv)">
 
                         <div class="chat-avatar">
-                            <div class="avatar-img">
+						<div class="avatar-img @(NotifState.Contains(conv.ConversationId.ToString().ToLower()) ? "avatar-ring" : "")">
                                 🥝
                             </div>
                         </div>
@@ -1089,7 +1105,11 @@
 			@foreach (var conv in groups)
 			{
 				<div class="chat-item" @onclick="() => SelectConversation(conv)">
-					<div class="chat-avatar"><div class="avatar-img">🌿</div></div>
+					<div class="chat-avatar">
+						<div class="avatar-img @(NotifState.Contains(conv.ConversationId.ToString()) ? "avatar-ring" : "")">
+							🌿
+						</div>
+						</div>
 					<div class="chat-info">
 						<div class="chat-name-row">
 							<div class="chat-name">@conv.GroupName</div>
@@ -1109,9 +1129,18 @@
 	private string activeFilter = "all";
 
 	private string _loadedForUserId = "";
-    private HashSet<string> notifiedUsers = new();
 	private HubConnection? _navHub;
+	private HubConnection? _notifHub;
 
+	protected override void OnInitialized()
+	{
+		NotifState.OnChange += HandleStateChange;
+	}
+
+	private void HandleStateChange()
+	{
+		InvokeAsync(StateHasChanged);
+	}
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -1122,7 +1151,7 @@
 		conversations = await conversationService.GetUserConversationsAsync(currentUserId!);
 		currentThought = await CurrentThoughtService.GetThoughtAsync(currentUserId!);
 		if (_navHub == null)          
-			await StartNavHubAsync(); 
+			await StartNavHubAsync();
 
 		StateHasChanged();
 	}
@@ -1184,12 +1213,14 @@
 	private async Task SelectConversation(UserProfile user)
 	{
 		var conv = await conversationService.FindDirectConversationsAsync(currentUserId!, user.UserId);
+		NotifState.Remove(conv.ConversationId.ToString().ToLower());
 		if (conv != null)
 			Navigation.NavigateTo($"/chat/{conv.ConversationId}");
 	}
 
 	private void SelectConversation(ConversationDto conv)
 	{
+		NotifState.Remove(conv.ConversationId.ToString().ToLower());
 		Navigation.NavigateTo($"/chat/{conv.ConversationId}");
 	}
 
@@ -1319,6 +1350,11 @@
 	{
 		if (_navHub is not null)
 			await _navHub.DisposeAsync();
+
+		if (_notifHub is not null)
+			await _notifHub.DisposeAsync();
+
+		NotifState.OnChange -= StateHasChanged;
 	}
 
 }

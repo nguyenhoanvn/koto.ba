@@ -17,6 +17,7 @@ public class GlobalNotificationService : IAsyncDisposable
     private readonly IJSRuntime _js;
     private readonly CircuitCookieService _cookieSvc;
     private readonly IUserService _userService;
+    private readonly ChatNotificationState _state;
 
     private HubConnection? _hub;
     private string? _currentUserId;
@@ -26,12 +27,14 @@ public class GlobalNotificationService : IAsyncDisposable
         INotificationSettingsService settings,
         IJSRuntime js,
         CircuitCookieService cookieSvc,
-        IUserService userService)
+        IUserService userService,
+        ChatNotificationState state)
     {
         _settings = settings;
         _js = js;
         _cookieSvc = cookieSvc;
         _userService = userService;
+        _state = state;
     }
 
     public async Task StartAsync(string userId, string hubUrl)
@@ -67,6 +70,7 @@ public class GlobalNotificationService : IAsyncDisposable
             {
                 avatarUrl = "/favicon.png";
             }
+            _state.Add(msg.ConversationId.ToString());
             await FireAsync(s, title, body, avatarUrl);
         });
 
