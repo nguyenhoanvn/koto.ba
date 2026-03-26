@@ -21,6 +21,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Settings
 
             if (!s.MasterEnabled) return;
             if (!IsEventEnabled(evt, s)) return;
+            if (IsQuietNow(s)) return;
 
 
             // Browser push notification
