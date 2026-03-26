@@ -13,11 +13,16 @@ namespace Kotoba.Modules.Hubs
         private readonly KotobaDbContext _context;
         private readonly IReactionService _reactionService;
         private readonly ICurrentThoughtService _thoughtService;
-        public ChatHub(KotobaDbContext context, IReactionService reactionService, ICurrentThoughtService thoughtService)
+        private readonly IHubContext<NotificationHub> _notifHub;
+        public ChatHub(KotobaDbContext context,
+            IReactionService reactionService,
+            ICurrentThoughtService thoughtService,
+            IHubContext<NotificationHub> notifHub)
         {
             _context = context;
             _reactionService = reactionService;
             _thoughtService = thoughtService;
+            _notifHub = notifHub;
         }
 
         public async Task JoinConversation(string conversationId)
@@ -116,11 +121,15 @@ namespace Kotoba.Modules.Hubs
             };
 
             await Clients.Group(conversationId).SendAsync("MessageConfirmed", dto, tempId);
+            
             var participants = await _context.ConversationParticipants
                 .Where(p => p.ConversationId.ToString() == conversationId && p.IsActive)
                 .Select(p => p.UserId)
                 .ToListAsync();
+
             await Clients.Users(participants).SendAsync("ConversationListChanged");
+
+            await _notifHub.Clients.Groups(participants).SendAsync("NotifyMessage", dto);
         }
 
         public async Task ReactToMessage(Guid conversationId, Guid messageId, ReactionType reactionType)

@@ -11,6 +11,7 @@ using Kotoba.Modules.Infrastructure.Services.Attachments;
 using Kotoba.Modules.Infrastructure.Services.Conversations;
 using Kotoba.Modules.Infrastructure.Services.Identity;
 using Kotoba.Modules.Infrastructure.Services.Messages;
+using Kotoba.Modules.Infrastructure.Services.Notifications;
 using Kotoba.Modules.Infrastructure.Services.Reactions;
 using Kotoba.Modules.Infrastructure.Services.Realtime;
 using Kotoba.Modules.Infrastructure.Services.Settings;
@@ -70,7 +71,6 @@ namespace Kotoba
                 options.AccessDeniedPath = "/login";
             });
 
-
             builder.Services.AddAutoMapper(cfg => cfg.AddMaps(typeof(Program).Assembly));
 
             builder.Services.AddScoped<IReactionService, ReactionService>();
@@ -89,6 +89,9 @@ namespace Kotoba
             builder.Services.AddScoped<ICurrentThoughtService, CurrentThoughtService>();
             builder.Services.AddScoped<INotificationSettingsService, NotificationSettingsService>();
             builder.Services.AddScoped<NotificationService>();
+            builder.Services.AddScoped<GlobalNotificationService>();
+            builder.Services.AddScoped<CircuitCookieService>();
+
 
             var app = builder.Build();
 
@@ -125,6 +128,14 @@ namespace Kotoba
             app.UseAntiforgery();
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.Use(async (context, next) =>
+            {
+                // Only capture for the Blazor hub negotiate or page requests
+                var cookieSvc = context.RequestServices.GetRequiredService<CircuitCookieService>();
+                cookieSvc.CookieHeader = context.Request.Headers["Cookie"].ToString();
+                await next();
+            });
 
             app.MapPost("/auth/register", async ([FromForm] RegisterRequest request, IUserService userService) =>
             {
@@ -171,8 +182,8 @@ namespace Kotoba
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode();
 
-
             app.MapHub<Kotoba.Modules.Hubs.ChatHub>("/chathub");
+            app.MapHub<NotificationHub>("/notificationhub");
 
             app.Run();
         }

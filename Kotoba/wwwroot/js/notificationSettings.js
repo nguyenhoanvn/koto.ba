@@ -3,20 +3,48 @@
 window.notifSettings = (() => {
 
     let _ctx = null;
+    let _unlocked = false;
 
     function getCtx() {
         if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
-        // Resume if suspended (browser autoplay policy)
-        if (_ctx.state === 'suspended') _ctx.resume();
         return _ctx;
     }
 
-    /**
-     * Plays a soft two-tone messenger-style chime.
-     * @param {number} volume  0.0 – 1.0
-     */
+    function unlockAudio() {
+        if (_unlocked) return;
+        const ctx = getCtx();
+
+        // create a silent buffer to unlock audio
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+
+        source.start(0);
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
+        _unlocked = true;
+        console.log("🔓 Audio unlocked");
+    }
+
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+
     function playSound(volume = 0.7) {
         const ctx = getCtx();
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
+        if (!_unlocked) {
+            console.warn("🔇 Audio not unlocked yet");
+            return;
+        }
+
         const vol = Math.max(0, Math.min(1, volume));
 
         const masterGain = ctx.createGain();
@@ -72,7 +100,7 @@ window.notifSettings = (() => {
      * @param {string} title
      * @param {string} body
      */
-    function showNotification(title, body) {
+    function showNotification(title, body, avatarUrl) {
         if (!('Notification' in window)) return;
         if (Notification.permission !== 'granted') return;
 
@@ -80,7 +108,7 @@ window.notifSettings = (() => {
 
         new Notification(title, {
             body,
-            icon: '/favicon.png',   // adjust to your favicon path
+            icon: avatarUrl,   // adjust to your favicon path
             badge: '/favicon.png',
             silent: true,           // we handle sound ourselves
             tag: 'kotoba-message',  // replace so we don't stack
