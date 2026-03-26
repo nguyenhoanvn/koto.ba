@@ -121,10 +121,12 @@ namespace Kotoba.Modules.Hubs
             };
 
             await Clients.Group(conversationId).SendAsync("MessageConfirmed", dto, tempId);
+            
             var participants = await _context.ConversationParticipants
                 .Where(p => p.ConversationId.ToString() == conversationId && p.IsActive)
                 .Select(p => p.UserId)
                 .ToListAsync();
+
             await Clients.Users(participants).SendAsync("ConversationListChanged");
 
             await _notifHub.Clients.Groups(participants).SendAsync("NotifyMessage", dto);
