@@ -38,7 +38,7 @@ namespace Kotoba.Modules.Infrastructure.Repositories
             return await _context.ConversationParticipants
                 .Where(p => p.UserId == userId && p.IsActive)
                 .Select(p => p.ConversationId)
-                .ToListAsync(); 
+                .ToListAsync();
         }
         public async Task AddAsync(ConversationParticipant participant)
         {
@@ -77,14 +77,16 @@ namespace Kotoba.Modules.Infrastructure.Repositories
             return await _context.ConversationParticipants
                 .Where(p => p.ConversationId.ToString() == conversationId
                          && p.UserId != userId
-                         && p.IsActive)
+                         && p.IsActive
+                         && p.User.AccountStatus != Domain.Enums.AccountStatus.Deleted)
                 .Select(p => new UserProfile
                 {
                     UserId = p.User.Id,
                     DisplayName = p.User.DisplayName,
                     AvatarUrl = p.User.AvatarUrl,
                     IsOnline = p.User.IsOnline,
-                    LastSeenAt = p.User.LastSeenAt
+                    LastSeenAt = p.User.LastSeenAt,
+                    AccountStatus = p.User.AccountStatus
                 })
                 .ToListAsync();
         }

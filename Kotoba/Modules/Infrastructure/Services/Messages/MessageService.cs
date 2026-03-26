@@ -25,6 +25,14 @@ namespace Kotoba.Modules.Infrastructure.Services.Messages
                             && p.IsActive);
 
             if (!isParticipant) return null;
+
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == request.SenderId);
+
+            if (user == null || user.AccountStatus != AccountStatus.Active)
+                return null;
+
             var message = new Message
             {
                 Id = Guid.NewGuid(),
@@ -87,7 +95,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Messages
                     {
                         Id = a.Id,
                         MessageId = a.MessageId,
-                        FileName = a.FileName                       
+                        FileName = a.FileName
                     }).ToList()
                 })
                 .ToList();

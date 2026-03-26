@@ -1,10 +1,64 @@
+@using Kotoba.Modules.Domain.DTOs
+@using Kotoba.Modules.Domain.Enums
+@using System.Security.Claims
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Kotoba.Modules.Domain.Interfaces.IUserService UserService
+@inject NavigationManager Navigation
+
+<style>
+    .page {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        flex-shrink: 0;
+    }
+
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .deactivated-banner {
+        background: #FEF3C7;
+        border-bottom: 1px solid #FBBF24;
+        color: #92400E;
+        padding: 10px 16px;
+        font-size: 13px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        z-index: 10;
+    }
+
+    .deactivated-banner strong {
+        font-weight: 600;
+    }
+</style>
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
-    @Body
+    <div class="main-content">
+        @if (CurrentUser?.AccountStatus == AccountStatus.Deactivated)
+        {
+            <div class="deactivated-banner">
+                <strong>Your account is deactivated.</strong>
+                <span>You can browse in read-only mode. Go to your profile to reactivate or delete your account.</span>
+            </div>
+        }
+
+        <CascadingValue Value="CurrentUser">
+            @Body
+        </CascadingValue>
+    </div>
 </div>
 
 <div id="blazor-error-ui">
@@ -12,3 +66,67 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private UserProfile? CurrentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUserAsync();
+        EnforceDeactivatedNavigation();
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private async Task LoadCurrentUserAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId))
+            {
+                CurrentUser = await UserService.GetUserProfileAsync(userId);
+            }
+        }
+        else
+        {
+            CurrentUser = null;
+        }
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        EnforceDeactivatedNavigation();
+    }
+
+    private void EnforceDeactivatedNavigation()
+    {
+        if (CurrentUser?.AccountStatus != AccountStatus.Deactivated)
+            return;
+
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var path = relative.Split('?', '#')[0].Trim('/');
+        var firstSegment = string.IsNullOrEmpty(path)
+            ? string.Empty
+            : path.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+
+        // Deactivated users may only access profile (for security/reactivation)
+        // and read-only content views: /chat, /chat/{id}, and /story.
+        var allowed = firstSegment.Equals("profile", StringComparison.OrdinalIgnoreCase)
+                      || firstSegment.Equals("chat", StringComparison.OrdinalIgnoreCase)
+                      || (firstSegment.Equals("story", StringComparison.OrdinalIgnoreCase)
+                          && path.Equals("story", StringComparison.OrdinalIgnoreCase));
+
+        if (!allowed)
+        {
+            Navigation.NavigateTo("/profile", true);
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+}

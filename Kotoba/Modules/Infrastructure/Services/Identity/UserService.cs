@@ -1,5 +1,6 @@
 using Kotoba.Modules.Domain.DTOs;
 using Kotoba.Modules.Domain.Entities;
+using Kotoba.Modules.Domain.Enums;
 using Kotoba.Modules.Domain.Interfaces;
 using Kotoba.Modules.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
@@ -43,6 +44,12 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
             var user = await _userManager.FindByEmailAsync(normalizedEmail);
             if (user is null)
             {
+                return false;
+            }
+
+            if (user.AccountStatus == AccountStatus.Deleted)
+            {
+                // Deleted accounts cannot log in again.
                 return false;
             }
 
@@ -210,15 +217,15 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
                 return AccountOperationResult.Failure(new[] { "User profile not found." });
             }
 
+            if (user.AccountStatus == AccountStatus.Deleted)
+            {
+                return AccountOperationResult.Failure(new[] { "Deleted accounts cannot be deactivated." });
+            }
+
             user.IsOnline = false;
             user.LastSeenAt = DateTime.UtcNow;
-            user.LockoutEnabled = true;
-
-            var lockoutResult = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
-            if (!lockoutResult.Succeeded)
-            {
-                return FromIdentityResult(lockoutResult);
-            }
+            user.AccountStatus = AccountStatus.Deactivated;
+            user.DeactivatedAt = DateTime.UtcNow;
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
@@ -227,6 +234,36 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
             }
 
             await _signInManager.SignOutAsync();
+            return AccountOperationResult.Success();
+        }
+
+        public async Task<AccountOperationResult> ReactivateAccountAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return AccountOperationResult.Failure(new[] { "Unable to resolve current user." });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+            {
+                return AccountOperationResult.Failure(new[] { "User profile not found." });
+            }
+
+            if (user.AccountStatus != AccountStatus.Deactivated)
+            {
+                return AccountOperationResult.Failure(new[] { "Account is not deactivated." });
+            }
+
+            user.AccountStatus = AccountStatus.Active;
+            user.DeactivatedAt = null;
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                return FromIdentityResult(updateResult);
+            }
+
             return AccountOperationResult.Success();
         }
 
@@ -243,10 +280,23 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
                 return AccountOperationResult.Failure(new[] { "User profile not found." });
             }
 
-            var deleteResult = await _userManager.DeleteAsync(user);
-            if (!deleteResult.Succeeded)
+            // Soft delete: anonymize profile and mark account as deleted while
+            // keeping content and unique identifiers like email.
+            user.DisplayName = "Deleted User";
+            user.AvatarUrl = null;
+            user.UserName = user.UserName; // keep username value, but it's no longer shown.
+            user.IsOnline = false;
+            user.LastSeenAt = DateTime.UtcNow;
+            user.AccountStatus = AccountStatus.Deleted;
+            user.DeletedAt = DateTime.UtcNow;
+
+            // Clear bio token if present.
+            await _userManager.RemoveAuthenticationTokenAsync(user, ProfileTokenProvider, ProfileBioTokenName);
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
             {
-                return FromIdentityResult(deleteResult);
+                return FromIdentityResult(updateResult);
             }
 
             await _signInManager.SignOutAsync();
@@ -277,7 +327,8 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
                 Email = user.Email ?? string.Empty,
                 Bio = bio ?? string.Empty,
                 IsOnline = user.IsOnline,
-                LastSeenAt = user.LastSeenAt
+                LastSeenAt = user.LastSeenAt,
+                AccountStatus = user.AccountStatus
             };
         }
 

@@ -1,3 +1,5 @@
+using Kotoba.Modules.Domain.Enums;
+
 namespace Kotoba.Modules.Domain.DTOs
 {
     public class UserDto
@@ -9,5 +11,6 @@ namespace Kotoba.Modules.Domain.DTOs
         public string Email { get; set; } = string.Empty;
         public bool IsOnline { get; set; }
         public DateTime? LastSeenAt { get; set; }
+        public AccountStatus AccountStatus { get; set; }
     }
 }

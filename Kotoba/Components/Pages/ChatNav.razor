@@ -1185,10 +1185,13 @@
 			groupSearchUsers.Clear();
 			return;
 		}
-		using var dbContext = DbFactory.CreateDbContext();
-		groupSearchUsers = await dbContext.Users.Where(u => u.DisplayName.Contains(q) && u.Id != currentUserId && !selectedParticipantIds.Contains(u.Id)).
-		Select(u => new UserProfile { UserId = u.Id, DisplayName = u.DisplayName }).Take(7)
-			.ToListAsync();
+		groupSearchUsers = userService
+			.GetUsersByDisplayNameAsync(q)
+			.Where(u => u.AccountStatus == Kotoba.Modules.Domain.Enums.AccountStatus.Active
+					&& u.UserId != currentUserId
+					&& !selectedParticipantIds.Contains(u.UserId!))
+			.Take(7)
+			.ToList();
 		StateHasChanged();
 	}
 

@@ -17,7 +17,8 @@ namespace Kotoba.Modules.Application.Mappings
                     UserName = src.UserName!,
                     Email = src.Email!,
                     IsOnline = src.IsOnline,
-                    LastSeenAt = src.LastSeenAt
+                    LastSeenAt = src.LastSeenAt,
+                    AccountStatus = src.AccountStatus
                 });
         }
     }

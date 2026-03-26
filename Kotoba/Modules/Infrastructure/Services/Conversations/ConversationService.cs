@@ -1,4 +1,3 @@
-using Azure.Core;
 using Kotoba.Modules.Domain.DTOs;
 using Kotoba.Modules.Domain.Entities;
 using Kotoba.Modules.Domain.Enums;
@@ -6,27 +5,40 @@ using Kotoba.Modules.Domain.Interfaces;
 using Kotoba.Modules.Infrastructure.Data;
 using Kotoba.Modules.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 
 
 namespace Kotoba.Modules.Infrastructure.Services.Conversations
 {
     public class ConversationService : IConversationService
-    {        
-        ConversationParticipantRepository _conversationParticipantRepository;
-        ConversationRepository _conversationRepository;
-        MessageRepository _messageRepository;
-        public ConversationService(ConversationParticipantRepository conversationParticipantRepository,
+    {
+        private readonly ConversationParticipantRepository _conversationParticipantRepository;
+        private readonly ConversationRepository _conversationRepository;
+        private readonly MessageRepository _messageRepository;
+        private readonly IDbContextFactory<KotobaDbContext> _dbFactory;
+
+        public ConversationService(
+            ConversationParticipantRepository conversationParticipantRepository,
             ConversationRepository conversationRepository,
-            MessageRepository messageRepository)
-        {            
+            MessageRepository messageRepository,
+            IDbContextFactory<KotobaDbContext> dbFactory)
+        {
             _conversationParticipantRepository = conversationParticipantRepository;
             _conversationRepository = conversationRepository;
             _messageRepository = messageRepository;
+            _dbFactory = dbFactory;
         }
 
         public async Task<ConversationDto?> CreateSelfDirectConversationAsync(string userAId)
         {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var user = await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userAId);
+
+            if (user == null || user.AccountStatus != AccountStatus.Active)
+                return null;
+
             Conversation newConversation = new Conversation
             {
                 Id = Guid.Parse(userAId),
@@ -37,7 +49,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
             {
                 ConversationId = newConversation.Id,
                 UserId = userAId
-            });            
+            });
 
             ConversationDto conversationDto = new ConversationDto
             {
@@ -51,9 +63,29 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
         }
         public async Task<ConversationDto?> CreateDirectConversationAsync(string userAId, string userBId)
         {
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var users = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userAId || u.Id == userBId)
+                .Select(u => new { u.Id, u.AccountStatus })
+                .ToListAsync();
+
+            var userA = users.FirstOrDefault(u => u.Id == userAId);
+            var userB = users.FirstOrDefault(u => u.Id == userBId);
+
+            if (userA == null || userB == null)
+                return null;
+
+            if (userA.AccountStatus != AccountStatus.Active)
+                return null;
+
+            if (userB.AccountStatus == AccountStatus.Deleted)
+                return null;
+
             Conversation newConversation = new Conversation
             {
-                Type = ConversationType.Direct                
+                Type = ConversationType.Direct
             };
 
             await _conversationRepository.AddAsync(newConversation);
@@ -82,13 +114,30 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
 
         public async Task<ConversationDto?> CreateGroupConversationAsync(CreateGroupRequest request)
         {
+            if (request.ParticipantIds == null || !request.ParticipantIds.Any())
+                return null;
+
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var users = await db.Users
+                .AsNoTracking()
+                .Where(u => request.ParticipantIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.AccountStatus })
+                .ToListAsync();
+
+            if (users.Count != request.ParticipantIds.Count())
+                return null;
+
+            if (users.Any(u => u.AccountStatus != AccountStatus.Active))
+                return null;
+
             ConversationType type = request.ParticipantIds.Count() < 3 ? ConversationType.Direct : ConversationType.Group;
             Conversation newConversation = new Conversation
             {
                 Type = type,
                 GroupName = request.GroupName
             };
-            await _conversationRepository.AddAsync(newConversation);            
+            await _conversationRepository.AddAsync(newConversation);
 
             foreach(string participantId in request.ParticipantIds)
             {
@@ -96,8 +145,8 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
                 {
                     ConversationId = newConversation.Id,
                     UserId = participantId
-                });                
-            }                                    
+                });
+            }
 
             ConversationDto conversationDto = new ConversationDto
             {
@@ -145,12 +194,15 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
                     GroupName = cp.Conversation.GroupName,
                     CreatedAt = cp.Conversation.CreatedAt,
                     UpdatedAt = cp.Conversation.UpdatedAt,
-                    Participants = cp.Conversation.Participants.Select(p => new UserProfile
+                    Participants = cp.Conversation.Participants
+                        .Where(p => p.IsActive && p.User.AccountStatus != AccountStatus.Deleted)
+                        .Select(p => new UserProfile
                     {
                         UserId = p.UserId,
                         DisplayName = p.User?.DisplayName ?? "",
                         AvatarUrl = p.User?.AvatarUrl,
-                        IsOnline = p.User?.IsOnline ?? false
+                        IsOnline = p.User?.IsOnline ?? false,
+                        AccountStatus = p.User?.AccountStatus ?? AccountStatus.Active
                     }).ToList()
                 }).ToList();
                 return conversationDtos;
@@ -166,7 +218,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
             if(userAId.Equals(userBId))
             {
                 // Check if a direct conversation already exists for the user with themselves
-                var selfConv = await _conversationRepository.GetConversationDetailByIdAsync(userAId);                
+                var selfConv = await _conversationRepository.GetConversationDetailByIdAsync(userAId);
                 if (selfConv == null)
                 {
                     var conversationTask = CreateSelfDirectConversationAsync(userAId);
@@ -181,9 +233,9 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
 
             if (sharedConvId == default)
             {
-                // Await the task returned by CreateGroupConversationAsync and wrap it in Task.FromResult              
+                // Await the task returned by CreateGroupConversationAsync and wrap it in Task.FromResult
                 var conversationTask = CreateDirectConversationAsync(userAId, userBId);
-                return await conversationTask;                               
+                return await conversationTask;
             }
 
             var conversation = await _conversationRepository.GetConversationByIdAsync(sharedConvId);
@@ -198,7 +250,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
 
         public async Task<List<MessageDto>> GetMessagesAsync(string conversationId)
         {
-            var convId = Guid.Parse(conversationId);            
+            var convId = Guid.Parse(conversationId);
 
             return await _messageRepository.GetMessagesAsync(convId);
         }

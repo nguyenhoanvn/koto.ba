@@ -31,7 +31,15 @@
                 {
                     <div class="setting-member">
                         <div class="setting-member-avatar">@m.DisplayName[0]</div>
-                        <span class="setting-member-name">@m.DisplayName</span>
+                        <div>
+                            <span class="setting-member-name">@m.DisplayName</span>
+                            @if (m.AccountStatus == AccountStatus.Deactivated)
+                            {
+                                <span style="margin-left:8px;font-size:11px;color:#92400E;background:#FEF3C7;border-radius:999px;padding:2px 8px;">
+                                    Deactivated
+                                </span>
+                            }
+                        </div>
                     </div>
                 }
             </div>

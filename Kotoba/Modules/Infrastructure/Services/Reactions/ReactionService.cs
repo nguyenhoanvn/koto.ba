@@ -16,6 +16,13 @@ namespace Kotoba.Modules.Infrastructure.Services.Reactions
         }
         public async Task<ReactionDto?> AddOrUpdateReactionAsync(string userId, Guid messageId, ReactionType reactionType)
         {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null || user.AccountStatus != AccountStatus.Active)
+                return null;
+
             var existingMessage = await _context.Messages.AnyAsync(m => m.Id == messageId && !m.IsDeleted);
             if (!existingMessage) return null;
             var existingReaction = await _context.Reactions
@@ -56,6 +63,13 @@ namespace Kotoba.Modules.Infrastructure.Services.Reactions
         }
         public async Task<bool> RemoveReactionAsync(string userId, Guid messageId)
         {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null || user.AccountStatus != AccountStatus.Active)
+                return false;
+
             var reaction = await _context.Reactions
                 .FirstOrDefaultAsync(r => r.MessageId == messageId && r.UserId == userId);
             if (reaction != null)

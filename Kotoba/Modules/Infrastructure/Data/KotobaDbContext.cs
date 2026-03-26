@@ -1,4 +1,5 @@
 using Kotoba.Modules.Domain.Entities;
+using Kotoba.Modules.Domain.Enums;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +30,9 @@ namespace Kotoba.Modules.Infrastructure.Data
                 entity.ToTable("Users");
                 entity.Property(u => u.DisplayName).HasMaxLength(120);
                 entity.Property(u => u.AvatarUrl).HasMaxLength(500);
+                entity.Property(u => u.AccountStatus)
+                    .HasConversion<string>()
+                    .HasMaxLength(40);
             });
 
             modelBuilder.Entity<Conversation>(entity =>

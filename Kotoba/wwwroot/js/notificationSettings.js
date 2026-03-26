@@ -24,8 +24,8 @@ window.notifSettings = (() => {
         masterGain.connect(ctx.destination);
 
         const notes = [
-            { freq: 880, startAt: 0, dur: 0.12 },  
-            { freq: 1318, startAt: 0.1, dur: 0.18 },   
+            { freq: 880, startAt: 0, dur: 0.12 },
+            { freq: 1318, startAt: 0.1, dur: 0.18 },
         ];
 
         notes.forEach(({ freq, startAt, dur }) => {
@@ -91,3 +91,18 @@ window.notifSettings = (() => {
     return { playSound, getPermission, requestPermission, showNotification };
 
 })();
+
+// Scroll helper used by chat message list
+window.scrollToBottom = function (element) {
+    try {
+        if (!element) return;
+        if (element.scrollHeight === undefined) return;
+
+        element.scrollTo
+            ? element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' })
+            : (element.scrollTop = element.scrollHeight);
+    } catch (e) {
+        console.error('scrollToBottom failed', e);
+    }
+};
+

@@ -32,11 +32,27 @@ namespace Kotoba.Modules.Hubs
 
         public async Task SendMessage(string tempId, string conversationId, string senderId, string content, List<AttachmentDto> uploadedFiles)
         {
+            var userId = Context.UserIdentifier;
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new HubException("User not authenticated.");
+
+            await AssertUserCanWriteAsync(userId);
+
+            var convId = Guid.Parse(conversationId);
+
+            var isParticipant = await _context.ConversationParticipants
+                .AnyAsync(p => p.ConversationId == convId
+                            && p.UserId == userId
+                            && p.IsActive);
+
+            if (!isParticipant)
+                throw new HubException("Access denied.");
+
             var message = new Message
             {
                 Id = Guid.NewGuid(),
-                ConversationId = Guid.Parse(conversationId),
-                SenderId = senderId,
+                ConversationId = convId,
+                SenderId = userId,
                 Content = content,
                 CreatedAt = DateTime.UtcNow
             };
@@ -75,9 +91,9 @@ namespace Kotoba.Modules.Hubs
             {
                 TempId = tempId,
                 MessageId = message.Id,
-                SenderId = senderId,
+                SenderId = userId,
                 Content = content,
-                ConversationId = Guid.Parse(conversationId),
+                ConversationId = convId,
                 CreatedAt = message.CreatedAt,
                 Status = MessageStatus.Sent,
                 Attachments = finalAttachmentDtos
@@ -89,6 +105,7 @@ namespace Kotoba.Modules.Hubs
         public async Task ReactToMessage(Guid conversationId, Guid messageId, ReactionType reactionType)
         {
             var userId = Context.UserIdentifier!;
+            await AssertUserCanWriteAsync(userId);
             await AssertParticipantAsync(conversationId, userId);
 
             var reaction = await _reactionService.AddOrUpdateReactionAsync(userId, messageId, reactionType);
@@ -103,6 +120,7 @@ namespace Kotoba.Modules.Hubs
         public async Task RemoveReaction(Guid conversationId, Guid messageId)
         {
             var userId = Context.UserIdentifier!;
+            await AssertUserCanWriteAsync(userId);
             await AssertParticipantAsync(conversationId, userId);
 
             var removed = await _reactionService.RemoveReactionAsync(userId, messageId);
@@ -117,6 +135,7 @@ namespace Kotoba.Modules.Hubs
         public async Task SendTyping(Guid conversationId)
         {
             var userId = Context.UserIdentifier!;
+            await AssertUserCanWriteAsync(userId);
             await Clients
                 .OthersInGroup(conversationId.ToString())
                 .SendAsync("UserTyping", new TypingStatusDto
@@ -130,6 +149,7 @@ namespace Kotoba.Modules.Hubs
         public async Task StopTyping(Guid conversationId)
         {
             var userId = Context.UserIdentifier!;
+            await AssertUserCanWriteAsync(userId);
             await Clients
                 .OthersInGroup(conversationId.ToString())
                 .SendAsync("UserTyping", new TypingStatusDto
@@ -142,6 +162,7 @@ namespace Kotoba.Modules.Hubs
         public async Task UpdateThought(string content)
         {
             var userId = Context.UserIdentifier!;
+            await AssertUserCanWriteAsync(userId);
             await _thoughtService.SetThoughtAsync(userId, content);
             await Clients.All.SendAsync("ThoughtUpdated", new { userId, content });
         }
@@ -155,6 +176,22 @@ namespace Kotoba.Modules.Hubs
 
             if (!isParticipant)
                 throw new HubException("Access denied.");
+        }
+
+        private async Task AssertUserCanWriteAsync(string userId)
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                throw new HubException("User not found.");
+
+            if (user.AccountStatus == AccountStatus.Deleted)
+                throw new HubException("Account is deleted.");
+
+            if (user.AccountStatus == AccountStatus.Deactivated)
+                throw new HubException("Account is deactivated.");
         }
 
         private string GetContentType(string fileName)

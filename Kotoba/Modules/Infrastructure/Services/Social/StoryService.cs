@@ -1,22 +1,26 @@
 using AutoMapper;
 using Kotoba.Modules.Domain.DTOs;
 using Kotoba.Modules.Domain.Entities;
+using Kotoba.Modules.Domain.Enums;
 using Kotoba.Modules.Domain.Interfaces;
 using Kotoba.Modules.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Kotoba.Modules.Infrastructure.Services.Social
 {
     public class StoryService : IStoryService
     {
         private readonly IStoryRepository _storyRepository;
+        private readonly IDbContextFactory<KotobaDbContext> _dbFactory;
         private readonly IMapper _mapper;
         private static readonly TimeSpan StoryLifetime = TimeSpan.FromHours(24);
 
-        public StoryService(IStoryRepository storyRepository, IMapper mapper)
+        public StoryService(IStoryRepository storyRepository,
+            IDbContextFactory<KotobaDbContext> dbFactory,
+            IMapper mapper)
         {
             _storyRepository = storyRepository;
+            _dbFactory = dbFactory;
             _mapper = mapper;
         }
 
@@ -24,6 +28,15 @@ namespace Kotoba.Modules.Infrastructure.Services.Social
         {
             if (string.IsNullOrWhiteSpace(request.UserId) ||
                 string.IsNullOrWhiteSpace(request.Content))
+                return null;
+
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var user = await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == request.UserId);
+
+            if (user == null || user.AccountStatus != AccountStatus.Active)
                 return null;
 
             var story = new Story

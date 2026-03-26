@@ -16,8 +16,14 @@ namespace Kotoba.Modules.Infrastructure.Repositories
         public IQueryable<UserProfile> GetUsersByDisplayNameAsync(string searchValue)
         {
             return _context.Users
-                .Where(u => u.DisplayName.Contains(searchValue))
-                .Select(u => new UserProfile { UserId = u.Id, DisplayName = u.DisplayName });
+                .Where(u => u.DisplayName.Contains(searchValue)
+                            && u.AccountStatus != Domain.Enums.AccountStatus.Deleted)
+                .Select(u => new UserProfile
+                {
+                    UserId = u.Id,
+                    DisplayName = u.DisplayName,
+                    AccountStatus = u.AccountStatus
+                });
         }
     }
 }

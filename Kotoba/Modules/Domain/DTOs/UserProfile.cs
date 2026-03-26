@@ -1,3 +1,5 @@
+using Kotoba.Modules.Domain.Enums;
+
 namespace Kotoba.Modules.Domain.DTOs;
 
 public class UserProfile
@@ -11,4 +13,5 @@ public class UserProfile
     public bool IsOnline { get; set; }
     public DateTime? LastSeenAt { get; set; }
     public string? CurrentThought { get; set; }
+    public AccountStatus AccountStatus { get; set; }
 }
