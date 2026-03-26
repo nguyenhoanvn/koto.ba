@@ -91,6 +91,7 @@ namespace Kotoba
             builder.Services.AddScoped<NotificationService>();
             builder.Services.AddScoped<GlobalNotificationService>();
             builder.Services.AddScoped<CircuitCookieService>();
+            builder.Services.AddSingleton<ChatNotificationState>();
 
 
             var app = builder.Build();
