@@ -125,13 +125,16 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
                 .Select(u => new { u.Id, u.AccountStatus })
                 .ToListAsync();
 
-            if (users.Count != request.ParticipantIds.Count())
+            if (users.Count != request.ParticipantIds.Count)
                 return null;
 
             if (users.Any(u => u.AccountStatus != AccountStatus.Active))
                 return null;
 
-            ConversationType type = request.ParticipantIds.Count() < 3 ? ConversationType.Direct : ConversationType.Group;
+            var type = !string.IsNullOrEmpty(request.GroupName)
+                || request.ParticipantIds.Count >= 3
+                ? ConversationType.Group
+                : ConversationType.Direct;
             Conversation newConversation = new Conversation
             {
                 Type = type,
@@ -139,7 +142,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
             };
             await _conversationRepository.AddAsync(newConversation);
 
-            foreach(string participantId in request.ParticipantIds)
+            foreach (string participantId in request.ParticipantIds)
             {
                 await _conversationParticipantRepository.AddAsync(new ConversationParticipant
                 {
@@ -213,34 +216,27 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
         public async Task<ConversationDto?> FindDirectConversationsAsync(string userAId, string userBId)
         {
             if (string.IsNullOrEmpty(userAId) || string.IsNullOrEmpty(userBId))
-                return await Task.FromResult<ConversationDto?>(null);
+                return null;
 
-            if(userAId.Equals(userBId))
+            if (userAId.Equals(userBId))
             {
-                // Check if a direct conversation already exists for the user with themselves
                 var selfConv = await _conversationRepository.GetConversationDetailByIdAsync(userAId);
                 if (selfConv == null)
                 {
-                    var conversationTask = CreateSelfDirectConversationAsync(userAId);
-                    return await conversationTask;
+                    return await CreateSelfDirectConversationAsync(userAId);
                 }
                 return selfConv;
             }
 
-            var userAConvIds = await _conversationParticipantRepository.GetAllConversationIdsForUserAsync(userAId);
-            var userBConvIds = await _conversationParticipantRepository.GetAllConversationIdsForUserAsync(userBId);
-            var sharedConvId = userAConvIds.Intersect(userBConvIds).FirstOrDefault();
+            var sharedConversation = await _conversationRepository
+                .GetDirectConversationAsync(userAId, userBId);
 
-            if (sharedConvId == default)
+            if (sharedConversation == null)
             {
-                // Await the task returned by CreateGroupConversationAsync and wrap it in Task.FromResult
-                var conversationTask = CreateDirectConversationAsync(userAId, userBId);
-                return await conversationTask;
+                return await CreateDirectConversationAsync(userAId, userBId);
             }
 
-            var conversation = await _conversationRepository.GetConversationByIdAsync(sharedConvId);
-
-            return await Task.FromResult(conversation);
+            return sharedConversation;
         }
 
         public Task<List<UserProfile>> GetOtherUsersInConversationsAsync(string conversationId, string userId)
@@ -254,6 +250,17 @@ namespace Kotoba.Modules.Infrastructure.Services.Conversations
 
             return await _messageRepository.GetMessagesAsync(convId);
         }
+
+        public Task<List<UserProfile>> GetAllUsersInConversationAsync(string conversationId)
+        {
+            return _conversationParticipantRepository.GetAllUsersInConversationAsync(conversationId);
+        }
+
+        public Task AddMemberAsync(string conversationId, string userId)
+    => _conversationParticipantRepository.AddMemberAsync(conversationId, userId);
+
+        public Task RemoveMemberAsync(string conversationId, string userId)
+            => _conversationParticipantRepository.RemoveMemberAsync(conversationId, userId);
 
         public Task LeaveConversationAsync(string conversationId, string userId)
     => _conversationParticipantRepository.LeaveConversationAsync(conversationId, userId);

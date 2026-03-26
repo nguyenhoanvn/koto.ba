@@ -90,6 +90,56 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<UserProfile>> GetAllUsersInConversationAsync(string conversationId)
+        {
+            using var _context = await _dbFactory.CreateDbContextAsync();
+            return await _context.ConversationParticipants
+                .Where(p => p.ConversationId.ToString() == conversationId
+                         && p.IsActive)
+                .Select(p => new UserProfile
+                {
+                    UserId = p.User.Id,
+                    DisplayName = p.User.DisplayName,
+                    AvatarUrl = p.User.AvatarUrl,
+                    IsOnline = p.User.IsOnline,
+                    LastSeenAt = p.User.LastSeenAt
+                })
+                .ToListAsync();
+        }
+        public async Task AddMemberAsync(string conversationId, string userId)
+        {
+            using var _context = await _dbFactory.CreateDbContextAsync();
+            var existing = await _context.ConversationParticipants
+                .FirstOrDefaultAsync(p => p.ConversationId.ToString() == conversationId && p.UserId == userId);
+
+            if (existing != null)
+            {
+                existing.IsActive = true;
+                existing.LeftAt = null;
+            }
+            else
+            {
+                await _context.ConversationParticipants.AddAsync(new ConversationParticipant
+                {
+                    ConversationId = Guid.Parse(conversationId),
+                    UserId = userId
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveMemberAsync(string conversationId, string userId)
+        {
+            using var _context = await _dbFactory.CreateDbContextAsync();
+            var participant = await _context.ConversationParticipants
+                .FirstOrDefaultAsync(p => p.ConversationId.ToString() == conversationId
+                                        && p.UserId == userId
+                                        && p.IsActive);
+            if (participant == null) return;
+            participant.IsActive = false;
+            participant.LeftAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
         public async Task LeaveConversationAsync(string conversationId, string userId)
         {
             using var _context = await _dbFactory.CreateDbContextAsync();
