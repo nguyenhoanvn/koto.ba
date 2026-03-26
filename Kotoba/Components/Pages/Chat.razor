@@ -12,6 +12,9 @@
         min-height: 0;
         width: 100%;
         height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
         overflow: hidden;
     }
 
@@ -22,14 +25,30 @@
     }
 
     .chat-shell > .chat-main {
+        display: flex;
+        flex-direction: column;
         min-height: 0;
         height: 100%;
     }
 
+    .chat-shell > .chat-main .messages-area {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .chat-shell > .chat-main .input-area {
+        flex-shrink: 0;
+    }
+
     @@media (max-width: 640.98px) {
-        /* When layout switches to column, avoid hard clamping to 100vh. */
+        /* Keep messages scrollable inside the pane on narrow screens as well. */
         .chat-shell {
-            height: 100%;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 100vh;
+            max-height: 100dvh;
         }
     }
 

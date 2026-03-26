@@ -63,6 +63,7 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                 .Include(m => m.Reactions)
                 .Include(m => m.Attachments)
                 .Include(m => m.Receipts)
+                .AsSplitQuery()
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -125,6 +126,7 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                     .Include(m => m.Sender)
                     .Include(m => m.Attachments)
                     .Include(m => m.Reactions)
+                    .AsSplitQuery()
                     .AsNoTracking()
                     .ToListAsync();
 
@@ -140,7 +142,7 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                 IsSystemMessage = m.IsSystemMessage,
                 SystemMessageType = m.SystemMessageType,
                 SystemMessageData = m.IsSystemMessage && !string.IsNullOrEmpty(m.SystemMessageData)
-                    ? JsonSerializer.Deserialize<SystemMessageDataDto>(m.SystemMessageData) 
+                    ? JsonSerializer.Deserialize<SystemMessageDataDto>(m.SystemMessageData)
                     : null,
                 Attachments = m.Attachments.Select(a => new AttachmentDto
                 {
