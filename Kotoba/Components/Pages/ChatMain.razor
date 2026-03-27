@@ -9,7 +9,9 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ICurrentThoughtService CurrentThoughtService
+@inject GlobalNotificationService GlobalNotificationService
 @using Kotoba.Modules.Domain.Interfaces
+@using Kotoba.Modules.Infrastructure.Services.Notifications
 
 <style>
     /* ===== CHAT LIST ===== */
@@ -866,7 +868,10 @@
         <div class="chat-header">
             <div class="chat-header-avatar">
                 🌿
-                <div class="header-online"></div>
+                @if (ShouldShowOnlineDot)
+                {
+                    <div class="header-online"></div>
+                }
             </div>
 			<div class="chat-header-info">
 				<div class="chat-header-name">@groupName</div>
@@ -1213,6 +1218,11 @@
 
     private ElementReference msgAreaRef;
 
+    protected override void OnInitialized()
+    {
+        GlobalNotificationService.PresenceChanged += HandlePresenceChanged;
+    }
+
     private bool IsReadOnly
     {
         get
@@ -1258,11 +1268,97 @@
                 {
                     AccountStatus.Deactivated => "Deactivated · offline",
                     AccountStatus.Deleted => "Deleted account",
-                    _ => "● Online"
+                    _ when other.IsOnline => "● Online",
+                    _ => $"Last seen {FormatRelativeLastSeen(other.LastSeenAt)}"
                 };
             }
 
-            return "● Online";
+            if (selectedConv?.Type == ConversationType.Group && selectedUsers != null)
+            {
+                var onlineCount = selectedUsers.Count(u => u.IsOnline);
+                var totalCount = selectedUsers.Count + 1;
+                return onlineCount > 0
+                    ? $"{onlineCount} online · {totalCount} members"
+                    : $"{totalCount} members";
+            }
+
+            return "Offline";
+        }
+    }
+
+    private bool ShouldShowOnlineDot
+    {
+        get
+        {
+            if (selectedConv?.Type == ConversationType.Direct && selectedUsers?.Count > 0)
+            {
+                return selectedUsers[0].IsOnline;
+            }
+
+            if (selectedConv?.Type == ConversationType.Group && selectedUsers != null)
+            {
+                return selectedUsers.Any(u => u.IsOnline);
+            }
+
+            return false;
+        }
+    }
+
+    private static string FormatRelativeLastSeen(DateTime? lastSeenAt)
+    {
+        if (!lastSeenAt.HasValue)
+        {
+            return "a while ago";
+        }
+
+        var delta = DateTime.UtcNow - lastSeenAt.Value;
+        if (delta < TimeSpan.Zero)
+        {
+            delta = TimeSpan.Zero;
+        }
+
+        if (delta < TimeSpan.FromMinutes(1))
+        {
+            return "just now";
+        }
+
+        if (delta < TimeSpan.FromHours(1))
+        {
+            var minutes = (int)Math.Floor(delta.TotalMinutes);
+            return minutes == 1 ? "1 minute ago" : $"{minutes} minutes ago";
+        }
+
+        if (delta < TimeSpan.FromDays(1))
+        {
+            var hours = (int)Math.Floor(delta.TotalHours);
+            return hours == 1 ? "1 hour ago" : $"{hours} hours ago";
+        }
+
+        var days = (int)Math.Floor(delta.TotalDays);
+        return days == 1 ? "1 day ago" : $"{days} days ago";
+    }
+
+    private void HandlePresenceChanged(PresenceUpdateDto update)
+    {
+        if (selectedUsers == null || string.IsNullOrWhiteSpace(update.UserId))
+        {
+            return;
+        }
+
+        var changed = false;
+        foreach (var user in selectedUsers.Where(u => u.UserId == update.UserId))
+        {
+            user.IsOnline = update.IsOnline;
+            if (!update.IsOnline)
+            {
+                user.LastSeenAt = update.LastSeenAt ?? DateTime.UtcNow;
+            }
+            changed = true;
+        }
+
+        if (changed)
+        {
+            _ = InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1641,6 +1737,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        GlobalNotificationService.PresenceChanged -= HandlePresenceChanged;
         _typingTimer?.Dispose();
         if (hubConnection is not null)
             await hubConnection.DisposeAsync();

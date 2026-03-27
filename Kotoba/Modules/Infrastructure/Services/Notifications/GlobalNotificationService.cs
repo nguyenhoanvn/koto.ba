@@ -13,6 +13,8 @@ namespace Kotoba.Modules.Infrastructure.Services.Notifications;
 /// </summary>
 public class GlobalNotificationService : IAsyncDisposable
 {
+    public event Action<PresenceUpdateDto>? PresenceChanged;
+
     private readonly INotificationSettingsService _settings;
     private readonly IJSRuntime _js;
     private readonly CircuitCookieService _cookieSvc;
@@ -40,7 +42,6 @@ public class GlobalNotificationService : IAsyncDisposable
     public async Task StartAsync(string userId, string hubUrl)
     {
         if (_started || string.IsNullOrEmpty(userId)) return;
-        _started = true;
         _currentUserId = userId;
 
         var cookieHeader = _cookieSvc.CookieHeader;
@@ -53,6 +54,14 @@ public class GlobalNotificationService : IAsyncDisposable
             })
             .WithAutomaticReconnect()
             .Build();
+
+        _hub.Reconnected += async _ =>
+        {
+            if (!string.IsNullOrWhiteSpace(_currentUserId))
+            {
+                await _hub.InvokeAsync("Register", _currentUserId);
+            }
+        };
 
         _hub.On<MessageDto>("NotifyMessage", async (msg) =>
         {
@@ -88,15 +97,35 @@ public class GlobalNotificationService : IAsyncDisposable
             await FireAsync(s, "Kotoba", $"{profile.DisplayName} is now online", avatarUrl);
         });
 
+        _hub.On<PresenceUpdateDto>("PresenceChanged", (update) =>
+        {
+            PresenceChanged?.Invoke(update);
+        });
+
+        _hub.On<List<PresenceUpdateDto>>("OnlineUsersSnapshot", (updates) =>
+        {
+            if (updates == null)
+            {
+                return;
+            }
+
+            foreach (var update in updates)
+            {
+                PresenceChanged?.Invoke(update);
+            }
+        });
+
         try
         {
             await _hub.StartAsync();
             await _hub.InvokeAsync("Register", userId);
+            _started = true;
             Console.WriteLine($"[GlobalNotif] Registered user: {userId}");
             Console.WriteLine($"[GlobalNotif] Hub connected. State={_hub.State}");
         }
         catch (Exception ex)
         {
+            _started = false;
             Console.Error.WriteLine($"[GlobalNotif] Hub connect failed: {ex.Message}");
         }
     }
@@ -147,6 +176,20 @@ public class GlobalNotificationService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_hub is not null)
+        {
+            try
+            {
+                if (_hub.State == HubConnectionState.Connected && !string.IsNullOrWhiteSpace(_currentUserId))
+                {
+                    await _hub.InvokeAsync("Unregister", _currentUserId);
+                }
+            }
+            catch
+            {
+                // Best-effort unregister; OnDisconnectedAsync still handles hard disconnects.
+            }
+
             await _hub.DisposeAsync();
+        }
     }
 }

@@ -139,16 +139,16 @@
 
        protected override async Task OnAfterRenderAsync(bool firstRender)
        {
-               if (!firstRender || _notifierStarted) return;
+           if (_notifierStarted) return;
 
-               var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-               var userId = authState.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+           var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+           var userId = authState.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-               if (string.IsNullOrEmpty(userId)) return;
+           if (string.IsNullOrEmpty(userId)) return;
 
-               var hubUrl = Navigation.ToAbsoluteUri("/notificationhub").ToString();
-               await Notifier.StartAsync(userId, hubUrl);
+           var hubUrl = Navigation.ToAbsoluteUri("/notificationhub").ToString();
+           await Notifier.StartAsync(userId, hubUrl);
 
-               _notifierStarted = true;
+           _notifierStarted = true;
        }
 }

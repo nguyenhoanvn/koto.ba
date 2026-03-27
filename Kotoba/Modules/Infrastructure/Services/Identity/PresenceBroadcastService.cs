@@ -21,14 +21,16 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
             return GetAllOnlineUsersInternalAsync();
         }
 
-        public Task<PresenceUpdateDto> NotifyUserOfflineAsync(string userId)
+        public async Task<PresenceUpdateDto> NotifyUserOfflineAsync(string userId)
         {
-            return BuildPresenceUpdateAsync(userId, isOnline: false);
+            await _presenceService.SetOfflineAsync(userId);
+            return await BuildPresenceUpdateAsync(userId, isOnline: false);
         }
 
-        public Task<PresenceUpdateDto> NotifyUserOnlineAsync(string userId)
+        public async Task<PresenceUpdateDto> NotifyUserOnlineAsync(string userId)
         {
-            return BuildPresenceUpdateAsync(userId, isOnline: true);
+            await _presenceService.SetOnlineAsync(userId);
+            return await BuildPresenceUpdateAsync(userId, isOnline: true);
         }
 
         private async Task<List<PresenceUpdateDto>> GetAllOnlineUsersInternalAsync()
@@ -47,9 +49,10 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
         private async Task<PresenceUpdateDto> BuildPresenceUpdateAsync(string userId, bool isOnline)
         {
             var displayName = userId;
+            User? user = null;
             if (!string.IsNullOrWhiteSpace(userId))
             {
-                var user = await _userManager.FindByIdAsync(userId);
+                user = await _userManager.FindByIdAsync(userId);
                 if (user is not null && !string.IsNullOrWhiteSpace(user.DisplayName))
                 {
                     displayName = user.DisplayName;
@@ -61,6 +64,7 @@ namespace Kotoba.Modules.Infrastructure.Services.Identity
                 UserId = userId,
                 DisplayName = displayName,
                 IsOnline = isOnline,
+                LastSeenAt = isOnline ? null : user?.LastSeenAt,
                 Timestamp = DateTime.UtcNow
             };
         }

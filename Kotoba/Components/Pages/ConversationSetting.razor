@@ -1,11 +1,13 @@
 @using Kotoba.Modules.Domain.DTOs
 @using Kotoba.Modules.Domain.Enums
+@using Kotoba.Modules.Infrastructure.Services.Notifications
 @using Microsoft.AspNetCore.SignalR.Client
 @inject IConversationService conversationService
 @inject IJSRuntime JS
 @inject IUserService userService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
+@inject GlobalNotificationService GlobalNotificationService
 @implements IAsyncDisposable
 @if (showConfirmModal)
 {
@@ -62,8 +64,11 @@
 								: "Direct message")
 			</div>
 			<div class="profile-status-badge">
-				<div class="status-dot-sm"></div>
-				Online
+				@if (ShouldShowStatusDot)
+				{
+					<div class="status-dot-sm"></div>
+				}
+				@StatusBadgeText
 			</div>
 		</div>
 
@@ -237,6 +242,99 @@
 	private bool showConfirmModal = false;
 	private string? memberToRemoveId;
 
+	protected override void OnInitialized()
+	{
+		GlobalNotificationService.PresenceChanged += HandlePresenceChanged;
+	}
+
+	private string StatusBadgeText
+	{
+		get
+		{
+			if (conversation?.Type == ConversationType.Direct)
+			{
+				var other = members?.FirstOrDefault(m => m.UserId != CurrentUserId);
+				if (other == null)
+				{
+					return "Unknown";
+				}
+
+				if (other.AccountStatus == AccountStatus.Deleted)
+				{
+					return "Deleted account";
+				}
+
+				if (other.AccountStatus == AccountStatus.Deactivated)
+				{
+					return "Deactivated";
+				}
+
+				if (other.IsOnline)
+				{
+					return "Online";
+				}
+
+				return $"Last seen {FormatRelativeLastSeen(other.LastSeenAt)}";
+			}
+
+			if (members == null || members.Count == 0)
+			{
+				return "No members";
+			}
+
+			var onlineCount = members.Count(m => m.IsOnline);
+			return onlineCount == 1 ? "1 member online" : $"{onlineCount} members online";
+		}
+	}
+
+	private bool ShouldShowStatusDot
+	{
+		get
+		{
+			if (conversation?.Type == ConversationType.Direct)
+			{
+				var other = members?.FirstOrDefault(m => m.UserId != CurrentUserId);
+				return other?.IsOnline == true;
+			}
+
+			return members?.Any(m => m.IsOnline) == true;
+		}
+	}
+
+	private static string FormatRelativeLastSeen(DateTime? lastSeenAt)
+	{
+		if (!lastSeenAt.HasValue)
+		{
+			return "a while ago";
+		}
+
+		var delta = DateTime.UtcNow - lastSeenAt.Value;
+		if (delta < TimeSpan.Zero)
+		{
+			delta = TimeSpan.Zero;
+		}
+
+		if (delta < TimeSpan.FromMinutes(1))
+		{
+			return "just now";
+		}
+
+		if (delta < TimeSpan.FromHours(1))
+		{
+			var minutes = (int)Math.Floor(delta.TotalMinutes);
+			return minutes == 1 ? "1 minute ago" : $"{minutes} minutes ago";
+		}
+
+		if (delta < TimeSpan.FromDays(1))
+		{
+			var hours = (int)Math.Floor(delta.TotalHours);
+			return hours == 1 ? "1 hour ago" : $"{hours} hours ago";
+		}
+
+		var days = (int)Math.Floor(delta.TotalDays);
+		return days == 1 ? "1 day ago" : $"{days} days ago";
+	}
+
 	protected override async Task OnParametersSetAsync()
 	{
 		if (string.IsNullOrEmpty(ConversationId) || _loadedId == ConversationId) return;
@@ -378,8 +476,33 @@
 
 	public async ValueTask DisposeAsync()
 	{
+		GlobalNotificationService.PresenceChanged -= HandlePresenceChanged;
 		if (_settingHub is not null)
 			await _settingHub.DisposeAsync();
+	}
+
+	private void HandlePresenceChanged(PresenceUpdateDto update)
+	{
+		if (members == null || string.IsNullOrWhiteSpace(update.UserId))
+		{
+			return;
+		}
+
+		var changed = false;
+		foreach (var member in members.Where(m => m.UserId == update.UserId))
+		{
+			member.IsOnline = update.IsOnline;
+			if (!update.IsOnline)
+			{
+				member.LastSeenAt = update.LastSeenAt ?? DateTime.UtcNow;
+			}
+			changed = true;
+		}
+
+		if (changed)
+		{
+			_ = InvokeAsync(StateHasChanged);
+		}
 	}
 
     private async Task OpenImage(string url)
