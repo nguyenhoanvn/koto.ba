@@ -926,6 +926,26 @@
 								{
 									@($"👤 {userName} is added to the group")
 								}
+								else if (msg.SystemMessageType == SystemMessageType.MemberPromoted)
+								{
+									@($"👤 {userName} is now an admin")
+								}
+								else if (msg.SystemMessageType == SystemMessageType.MemberDemoted)
+								{
+									@($"👤 {userName} is no longer an admin")
+								}
+								else if (msg.SystemMessageType == SystemMessageType.OwnershipTransferred)
+								{
+									@($"👤 Ownership transferred to {userName}")
+								}
+								else if (msg.SystemMessageType == SystemMessageType.GroupNameChanged)
+								{
+									@($"Group name changed")
+								}
+								else if (msg.SystemMessageType == SystemMessageType.OwnerLeft)
+								{
+									@($"👤 Owner {userName} left the group")
+								}
 							</span>
 						</div>
 					</div>
@@ -1594,11 +1614,17 @@
                 {
                     messages.Add(msg);
                 }
+				if (msg.IsSystemMessage && IsSystemMessageAboutMembers(msg.SystemMessageType))
+				{
+					selectedUsers = await conversationService
+					.GetOtherUsersInConversationsAsync(ConversationId!, currentUserId!);
+				}
 
                 StateHasChanged();
                 await ScrollToBottom();
             });
         });
+
 
         hubConnection.On<ReactionDto>("ReactionUpdated", async (reaction) =>
         {
@@ -1641,7 +1667,19 @@
                 StateHasChanged();
             });
         });
-
+		hubConnection.On<string>("GroupNameUpdated", async (newName) =>
+	{
+		await InvokeAsync(() =>
+		{
+			if (selectedConv != null)
+			{
+				selectedConv.GroupName = newName; 
+				groupName = newName;  
+				Console.WriteLine($"GroupName updated to: {newName}");
+			}
+			StateHasChanged();
+		});
+	});
 		hubConnection.On<string>("RemovedFromGroup", async (conversationId) =>
 		{
 			await InvokeAsync(async () =>
@@ -1699,16 +1737,16 @@
 		await InvokeAsync(StateHasChanged);
 	}
 	});
-
-        hubConnection.On("MembersUpdated", async () =>
-{
-            await InvokeAsync(async () =>
-            {
-                selectedUsers = await conversationService
-                    .GetOtherUsersInConversationsAsync(ConversationId!, currentUserId!);
-                StateHasChanged();
-            });
-        });
+		hubConnection.On("MembersUpdated", async () =>
+		{
+			await InvokeAsync(async () =>
+			{
+				selectedUsers = await conversationService
+					.GetOtherUsersInConversationsAsync(ConversationId!, currentUserId!);
+				Console.WriteLine($"✅ MembersUpdated - selectedUsers reloaded, count: {selectedUsers?.Count}");
+				StateHasChanged();
+			});
+		});
 
         hubConnection.On<Guid>("MessageRevoked", async (messageId) =>
 {
@@ -1957,6 +1995,15 @@
         if (hubConnection is not null)
             await hubConnection.DisposeAsync();
     }
+
+	private bool IsSystemMessageAboutMembers(SystemMessageType? type)
+	{
+		return type == SystemMessageType.MemberAdded
+			|| type == SystemMessageType.MemberRemoved
+			|| type == SystemMessageType.MemberPromoted
+			|| type == SystemMessageType.MemberDemoted
+			|| type == SystemMessageType.OwnershipTransferred;
+	}
 
     private void StartReply(MessageDto msg)
     {
