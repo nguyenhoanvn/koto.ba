@@ -978,7 +978,7 @@
                                      @onclick="() => StartReply(msg)">
                                     ↩️
                                 </div>
-                                @* Revoke — chỉ hiện với tin của mình *@                                
+                                @* Revoke — chỉ hiện với tin của mình *@
                                 <div style="width:26px;height:26px;border-radius:50%;background:var(--surface);
                                     border:1px solid var(--border);display:flex;align-items:center;
                                     justify-content:center;font-size:13px;cursor:pointer;"
@@ -986,7 +986,7 @@
                                         @onclick:stopPropagation="true"
                                         @onclick="() => RevokeMessage(msg.MessageId)">
                                     🗑️
-                                </div>                                
+                                </div>
                                 @* Reaction picker — giữ nguyên *@
                                 <div style="width:26px;height:26px;border-radius:50%;background:var(--surface);
                                 border:1px solid var(--border);display:flex;align-items:center;
@@ -1199,14 +1199,7 @@
 			{
 				<div class="input-toolbar" style="justify-content:center;">
 					<span style="font-size:13px;color:var(--muted);">
-						@if (isUserRemoved)
-						{
-							<span>You cannot send messages - removed from group</span>
-						}
-						else
-						{
-							<span>Sending messages and reactions is disabled while your account is deactivated.</span>
-						}
+                        <span>@ReadOnlyInputNotice</span>
 					</span>
 				</div>
 			}
@@ -1407,11 +1400,35 @@
             if (selectedConv?.Type == ConversationType.Direct && selectedUsers?.Count > 0)
             {
                 var other = selectedUsers[0];
-                if (other.AccountStatus == AccountStatus.Deleted)
+                if (other.AccountStatus == AccountStatus.Deleted || other.AccountStatus == AccountStatus.Deactivated)
                     return true;
             }
 
             return false;
+        }
+    }
+
+    private string ReadOnlyInputNotice
+    {
+        get
+        {
+            if (isUserRemoved)
+                return "You cannot send messages - removed from group";
+
+            if (CurrentUserProfile?.AccountStatus == AccountStatus.Deactivated)
+                return "Sending messages and reactions is disabled while your account is deactivated.";
+
+            if (selectedConv?.Type == ConversationType.Direct && selectedUsers?.Count > 0)
+            {
+                var other = selectedUsers[0];
+                if (other.AccountStatus == AccountStatus.Deleted)
+                    return "You cannot send messages to a deleted account.";
+
+                if (other.AccountStatus == AccountStatus.Deactivated)
+                    return "This account is deactivated. Messaging is unavailable.";
+            }
+
+            return "Messaging is unavailable in this conversation.";
         }
     }
 
@@ -1575,7 +1592,7 @@
 		else
 		{
 			otherUserThought = null;
-		}
+        }
 
         if (hubConnection == null)
             await StartHubAsync();
@@ -1674,8 +1691,8 @@
 		{
 			if (selectedConv != null)
 			{
-				selectedConv.GroupName = newName; 
-				groupName = newName;  
+				selectedConv.GroupName = newName;
+				groupName = newName;
 				Console.WriteLine($"GroupName updated to: {newName}");
 			}
 			StateHasChanged();

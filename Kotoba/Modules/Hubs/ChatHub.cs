@@ -66,16 +66,7 @@ namespace Kotoba.Modules.Hubs
             if (!isParticipant)
                 throw new HubException("Access denied.");
 
-            if (conversation.Type == ConversationType.Direct)
-            {
-                var other = conversation.Participants
-                    .FirstOrDefault(p => p.UserId != userId && p.IsActive);
-
-                if (other?.User?.AccountStatus == AccountStatus.Deleted)
-                {
-                    throw new HubException("Cannot send messages to a deleted account.");
-                }
-            }
+            AssertDirectRecipientCanReceive(conversation, userId);
 
             var message = new Message
             {
@@ -129,7 +120,7 @@ namespace Kotoba.Modules.Hubs
             };
 
             await Clients.Group(conversationId).SendAsync("MessageConfirmed", dto, tempId);
-            
+
             var participants = await _context.ConversationParticipants
                 .Where(p => p.ConversationId.ToString() == conversationId && p.IsActive)
                 .Select(p => p.UserId)
@@ -607,11 +598,34 @@ namespace Kotoba.Modules.Hubs
             string senderId, string content, Guid replyToMessageId,
             List<AttachmentDto> attachments)
         {
+            var userId = Context.UserIdentifier;
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new HubException("User not authenticated.");
+
+            await AssertUserCanWriteAsync(userId);
+
+            var convId = Guid.Parse(conversationId);
+            var conversation = await _context.Conversations
+                .Include(c => c.Participants)
+                    .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(c => c.Id == convId);
+
+            if (conversation == null)
+                throw new HubException("Conversation not found.");
+
+            var isParticipant = conversation.Participants
+                .Any(p => p.UserId == userId && p.IsActive);
+
+            if (!isParticipant)
+                throw new HubException("Access denied.");
+
+            AssertDirectRecipientCanReceive(conversation, userId);
+
             var dto = await _messageService.SendReplyAsync(new SendReplyRequest
             {
                 TempId = tempId,
-                ConversationId = Guid.Parse(conversationId),
-                SenderId = senderId,
+                ConversationId = convId,
+                SenderId = userId,
                 Content = content,
                 ReplyToMessageId = replyToMessageId,
                 Attachments = attachments
@@ -622,6 +636,24 @@ namespace Kotoba.Modules.Hubs
 
             await Clients.Group(conversationId)
                 .SendAsync("ConversationListChanged");
+        }
+
+        private static void AssertDirectRecipientCanReceive(Conversation conversation, string senderUserId)
+        {
+            if (conversation.Type != ConversationType.Direct)
+                return;
+
+            var other = conversation.Participants
+                .FirstOrDefault(p => p.UserId != senderUserId && p.IsActive);
+
+            if (other?.User == null)
+                throw new HubException("Recipient not found.");
+
+            if (other.User.AccountStatus == AccountStatus.Deleted)
+                throw new HubException("Cannot send messages to a deleted account.");
+
+            if (other.User.AccountStatus == AccountStatus.Deactivated)
+                throw new HubException("Cannot send messages to a deactivated account.");
         }
 
         private MessageDto MapSystemMessageToDto(Message systemMsg)
