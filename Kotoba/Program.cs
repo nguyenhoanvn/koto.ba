@@ -267,11 +267,12 @@ namespace Kotoba
                 }
 
                 var result = await userService.DeactivateUserByAdminAsync(
-                    userId,
-                    performedByAdminId,
-                    httpContext.Connection.RemoteIpAddress?.ToString(),
-                    httpContext.TraceIdentifier,
-                    httpContext.RequestAborted);
+                    userId: userId,
+                    performedByAdminId: performedByAdminId,
+                    reason: null,
+                    sourceIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    correlationId: httpContext.TraceIdentifier,
+                    cancellationToken: httpContext.RequestAborted);
 
                 return result.Succeeded
                     ? Results.Json(new { success = true })
@@ -291,11 +292,12 @@ namespace Kotoba
                 }
 
                 var result = await userService.ReactivateUserByAdminAsync(
-                    userId,
-                    performedByAdminId,
-                    httpContext.Connection.RemoteIpAddress?.ToString(),
-                    httpContext.TraceIdentifier,
-                    httpContext.RequestAborted);
+                    userId: userId,
+                    performedByAdminId: performedByAdminId,
+                    reason: null,
+                    sourceIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    correlationId: httpContext.TraceIdentifier,
+                    cancellationToken: httpContext.RequestAborted);
 
                 return result.Succeeded
                     ? Results.Json(new { success = true })
@@ -315,11 +317,12 @@ namespace Kotoba
                 }
 
                 var result = await userService.BanUserByAdminAsync(
-                    userId,
-                    performedByAdminId,
-                    httpContext.Connection.RemoteIpAddress?.ToString(),
-                    httpContext.TraceIdentifier,
-                    httpContext.RequestAborted);
+                    userId: userId,
+                    performedByAdminId: performedByAdminId,
+                    reason: null,
+                    sourceIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    correlationId: httpContext.TraceIdentifier,
+                    cancellationToken: httpContext.RequestAborted);
 
                 return result.Succeeded
                     ? Results.Json(new { success = true })
@@ -339,11 +342,12 @@ namespace Kotoba
                 }
 
                 var result = await userService.UnbanUserByAdminAsync(
-                    userId,
-                    performedByAdminId,
-                    httpContext.Connection.RemoteIpAddress?.ToString(),
-                    httpContext.TraceIdentifier,
-                    httpContext.RequestAborted);
+                    userId: userId,
+                    performedByAdminId: performedByAdminId,
+                    reason: null,
+                    sourceIp: httpContext.Connection.RemoteIpAddress?.ToString(),
+                    correlationId: httpContext.TraceIdentifier,
+                    cancellationToken: httpContext.RequestAborted);
 
                 return result.Succeeded
                     ? Results.Json(new { success = true })
