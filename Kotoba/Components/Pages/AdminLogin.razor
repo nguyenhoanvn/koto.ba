@@ -1,0 +1,68 @@
+@page "/admin/login"
+
+<PageTitle>Admin Login</PageTitle>
+
+<div class="auth-page auth-page-login">
+    <section class="auth-shell" aria-labelledby="admin-login-title">
+        <div class="auth-hero">
+            <div class="auth-brand">
+                <div class="auth-brand-mark">K</div>
+                <div>
+                    <div class="auth-brand-name">koto.ba</div>
+                    <p class="auth-brand-copy">Administrative access for system and business operations.</p>
+                </div>
+            </div>
+
+            <div class="auth-hero-copy">
+                <p class="auth-eyebrow">Admin portal</p>
+                <h1 id="admin-login-title" class="auth-title">Sign in to the admin console</h1>
+                <p class="auth-subtitle">Use your admin credentials to continue to the dashboard and management tools.</p>
+            </div>
+
+            <div class="auth-feature-list" aria-label="Highlights">
+                <div class="auth-feature-item">Review platform reports and moderation queues.</div>
+                <div class="auth-feature-item">Track actions with accountability and role-based access.</div>
+                <div class="auth-feature-item">Secure sign-in path dedicated to admin accounts.</div>
+            </div>
+        </div>
+
+        <div class="auth-panel">
+            <div class="auth-panel-header">
+                <p class="auth-panel-kicker">Administrator access</p>
+                <div class="admin-tag" aria-label="Admin only">Admin</div>
+                <h2 class="auth-panel-title">Admin Login</h2>
+                <p class="auth-panel-copy">Enter your admin email and password to continue.</p>
+            </div>
+
+            @if (ShowError)
+            {
+                <div class="auth-alert" role="alert">
+                    Invalid admin credentials or insufficient permissions.
+                </div>
+            }
+
+            <form method="post" action="/auth/admin/login" class="auth-form">
+                <AntiforgeryToken />
+
+                <div class="auth-field">
+                    <label class="auth-label" for="email">Email</label>
+                    <input class="auth-input" id="email" name="Email" type="email" placeholder="admin@koto.ba" autocomplete="email" required />
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="password">Password</label>
+                    <input class="auth-input" id="password" name="Password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+                </div>
+
+                <button type="submit" class="auth-submit">Sign in as admin</button>
+            </form>
+        </div>
+    </section>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? ErrorCode { get; set; }
+
+    private bool ShowError => string.Equals(ErrorCode, "1", StringComparison.Ordinal);
+}

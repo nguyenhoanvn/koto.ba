@@ -1,0 +1,355 @@
+@page "/admin/business/users"
+@layout Kotoba.Components.Layout.AdminLayout
+@using Kotoba.Modules.Domain.Constants
+@using Kotoba.Modules.Domain.DTOs
+@using Kotoba.Modules.Domain.Enums
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize(Roles = AdminRoles.BusinessAdmin)]
+@inject IUserService UserService
+@inject IPresenceService PresenceService
+@inject IJSRuntime JsRuntime
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Users</PageTitle>
+
+<div class="admin-console">
+    <aside class="admin-side">
+        <div class="admin-brand">
+            <div class="admin-brand-mark">K</div>
+            <div>
+                <div class="admin-brand-name">koto.ba</div>
+                <div class="admin-brand-sub">Business Operations</div>
+            </div>
+        </div>
+
+        <nav class="admin-nav" aria-label="Business admin navigation">
+            <p class="admin-nav-label">Overview</p>
+            <a class="admin-nav-item" href="/admin/business/dashboard">
+                <span class="admin-nav-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M3 13h8V3H3z" />
+                        <path d="M13 21h8v-8h-8z" />
+                        <path d="M13 3h8v6h-8z" />
+                        <path d="M3 21h8v-6H3z" />
+                    </svg>
+                </span>
+                <span>Business Overview</span>
+            </a>
+            <p class="admin-nav-label">Operations</p>
+            <a class="admin-nav-item active" href="/admin/business/users">
+                <span class="admin-nav-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                </span>
+                <span>Users</span>
+            </a>
+            <a class="admin-nav-item" href="#">
+                <span class="admin-nav-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M12 9v2" />
+                        <path d="M12 17h.01" />
+                        <path d="M10.29 3.86l-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.73-2.94l-8.2-14.2a2 2 0 0 0-3.44 0z" />
+                    </svg>
+                </span>
+                <span>Reports</span>
+            </a>
+            <a class="admin-nav-item" href="#">
+                <span class="admin-nav-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M3 15h18" />
+                        <path d="M9 9h.01" />
+                        <path d="M15 9h.01" />
+                    </svg>
+                </span>
+                <span>Stories</span>
+            </a>
+            <a class="admin-nav-item" href="#">
+                <span class="admin-nav-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M4 19h16" />
+                        <path d="M7 16V9" />
+                        <path d="M12 16V5" />
+                        <path d="M17 16v-3" />
+                    </svg>
+                </span>
+                <span>Statistics</span>
+            </a>
+        </nav>
+
+        <div class="admin-side-footer">
+            <a class="admin-nav-item admin-side-logout" href="/auth/admin/logout">
+                <span class="admin-nav-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <path d="M16 17l5-5-5-5" />
+                        <path d="M21 12H9" />
+                    </svg>
+                </span>
+                <span>Log out</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <p class="admin-eyebrow">Operations</p>
+                <h1 class="admin-title">Users</h1>
+            </div>
+            <div class="admin-pill">Business Admin</div>
+        </header>
+
+        <section class="admin-stats" aria-label="User metrics">
+            <article class="admin-stat-card">
+                <p class="admin-stat-label">Total Users</p>
+                <p class="admin-stat-value">@TotalUserCount</p>
+                <p class="admin-stat-meta">Non-admin accounts</p>
+            </article>
+            <article class="admin-stat-card">
+                <p class="admin-stat-label">Online Users</p>
+                <p class="admin-stat-value">@OnlineUserCount</p>
+                <p class="admin-stat-meta">Currently active</p>
+            </article>
+            <article class="admin-stat-card">
+                <p class="admin-stat-label">Active Accounts</p>
+                <p class="admin-stat-value">@ActiveUserCount</p>
+                <p class="admin-stat-meta">Account status is active</p>
+            </article>
+            <article class="admin-stat-card">
+                <p class="admin-stat-label">Deactivated Accounts</p>
+                <p class="admin-stat-value">@DeactivatedUserCount</p>
+                <p class="admin-stat-meta">Excluded from login</p>
+            </article>
+            <article class="admin-stat-card">
+                <p class="admin-stat-label">Banned Accounts</p>
+                <p class="admin-stat-value">@BannedUserCount</p>
+                <p class="admin-stat-meta">Blocked from all login</p>
+            </article>
+        </section>
+
+        <section class="admin-panels">
+            <article class="admin-panel" style="grid-column: 1 / -1;">
+                <div class="admin-panel-header">
+                    <h2 class="admin-panel-title">Normal Users</h2>
+                    <span class="admin-panel-badge">Directory</span>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Online</th>
+                                <th>Created (UTC)</th>
+                                <th>Last Seen (UTC)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Users.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="7">No users found yet.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var user in Users)
+                                {
+                                    <tr>
+                                        <td>@user.DisplayName</td>
+                                        <td>@user.Email</td>
+                                        <td>
+                                            <span class="admin-tag @(user.AccountStatus == AccountStatus.Active ? string.Empty : "admin-tag-warning")">
+                                                @user.AccountStatus
+                                            </span>
+                                        </td>
+                                        <td>@(IsCurrentlyOnline(user.UserId) ? "Online" : "Offline")</td>
+                                        <td>@user.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@(user.LastSeenAt.HasValue ? user.LastSeenAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</td>
+                                        <td>
+                                            @if (user.AccountStatus == AccountStatus.Active)
+                                            {
+                                                <button class="admin-action-btn" @onclick="() => ChangeUserStatusAsync(user.UserId, UserModerationAction.Deactivate)">Deactivate</button>
+                                                <button class="admin-action-btn admin-action-disable" @onclick="() => ChangeUserStatusAsync(user.UserId, UserModerationAction.Ban)">Ban</button>
+                                            }
+                                            else if (user.AccountStatus == AccountStatus.Deactivated)
+                                            {
+                                                <button class="admin-action-btn" @onclick="() => ChangeUserStatusAsync(user.UserId, UserModerationAction.Reactivate)">Reactivate</button>
+                                                <button class="admin-action-btn admin-action-disable" @onclick="() => ChangeUserStatusAsync(user.UserId, UserModerationAction.Ban)">Ban</button>
+                                            }
+                                            else if (user.AccountStatus == AccountStatus.Banned)
+                                            {
+                                                <button class="admin-action-btn" @onclick="() => ChangeUserStatusAsync(user.UserId, UserModerationAction.Unban)">Unban</button>
+                                            }
+                                            else
+                                            {
+                                                <span class="admin-action-disabled">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="admin-panel" style="grid-column: 1 / -1;">
+                <div class="admin-panel-header">
+                    <h2 class="admin-panel-title">Banned Users</h2>
+                    <span class="admin-panel-badge">Moderation</span>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Last Seen (UTC)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (BannedUsers.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="5">No banned users.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var user in BannedUsers)
+                                {
+                                    <tr>
+                                        <td>@user.DisplayName</td>
+                                        <td>@user.Email</td>
+                                        <td><span class="admin-tag admin-tag-warning">@user.AccountStatus</span></td>
+                                        <td>@(user.LastSeenAt.HasValue ? user.LastSeenAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</td>
+                                        <td>
+                                            <button class="admin-action-btn" @onclick="() => ChangeUserStatusAsync(user.UserId, UserModerationAction.Unban)">Unban</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
+    </main>
+</div>
+
+@code {
+    private enum UserModerationAction
+    {
+        Deactivate,
+        Reactivate,
+        Ban,
+        Unban,
+    }
+
+    private List<NormalUserListItem> Users { get; set; } = new();
+    private List<NormalUserListItem> BannedUsers { get; set; } = new();
+    private HashSet<string> OnlineUserIds { get; set; } = new(StringComparer.Ordinal);
+
+    private int TotalUserCount => Users.Count + BannedUsers.Count;
+    private int OnlineUserCount => Users.Count(user => OnlineUserIds.Contains(user.UserId));
+    private int ActiveUserCount => Users.Count(user => user.AccountStatus == AccountStatus.Active);
+    private int DeactivatedUserCount => Users.Count(user => user.AccountStatus == AccountStatus.Deactivated);
+    private int BannedUserCount => BannedUsers.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadUsersAsync();
+    }
+
+    private bool IsCurrentlyOnline(string userId)
+    {
+        return !string.IsNullOrWhiteSpace(userId) && OnlineUserIds.Contains(userId);
+    }
+
+    private async Task ReloadUsersAsync()
+    {
+        var allUsers = (await UserService.GetNormalUsersAsync()).ToList();
+        Users = allUsers
+            .Where(user => user.AccountStatus != AccountStatus.Banned)
+            .ToList();
+        BannedUsers = allUsers
+            .Where(user => user.AccountStatus == AccountStatus.Banned)
+            .OrderByDescending(user => user.LastSeenAt ?? user.CreatedAt)
+            .ToList();
+        OnlineUserIds = (await PresenceService.GetAllOnlineUsersAsync()).ToHashSet(StringComparer.Ordinal);
+    }
+
+    private async Task ChangeUserStatusAsync(string userId, UserModerationAction action)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var (path, prompt, successMessage) = action switch
+        {
+            UserModerationAction.Deactivate => ($"/admin/business/users/{Uri.EscapeDataString(userId)}/deactivate", "Deactivate this user account?", "User deactivated."),
+            UserModerationAction.Reactivate => ($"/admin/business/users/{Uri.EscapeDataString(userId)}/reactivate", "Reactivate this user account?", "User reactivated."),
+            UserModerationAction.Ban => ($"/admin/business/users/{Uri.EscapeDataString(userId)}/ban", "Ban this user from logging in?", "User banned."),
+            UserModerationAction.Unban => ($"/admin/business/users/{Uri.EscapeDataString(userId)}/unban", "Unban this user account?", "User unbanned."),
+            _ => (string.Empty, string.Empty, string.Empty),
+        };
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        if (!await JsRuntime.InvokeAsync<bool>("confirm", prompt))
+        {
+            return;
+        }
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var performedByAdminId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(performedByAdminId))
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Unable to resolve your admin session.");
+                return;
+            }
+
+            var result = action switch
+            {
+                UserModerationAction.Deactivate => await UserService.DeactivateUserByAdminAsync(userId, performedByAdminId),
+                UserModerationAction.Reactivate => await UserService.ReactivateUserByAdminAsync(userId, performedByAdminId),
+                UserModerationAction.Ban => await UserService.BanUserByAdminAsync(userId, performedByAdminId),
+                UserModerationAction.Unban => await UserService.UnbanUserByAdminAsync(userId, performedByAdminId),
+                _ => AccountOperationResult.Failure(new[] { "Unsupported moderation action." }),
+            };
+
+            if (!result.Succeeded)
+            {
+                var errorMessage = result.Errors.Count > 0
+                    ? string.Join("\n", result.Errors)
+                    : "Unable to apply action. Please try again.";
+                await JsRuntime.InvokeVoidAsync("alert", errorMessage);
+                return;
+            }
+
+            await ReloadUsersAsync();
+            await JsRuntime.InvokeVoidAsync("alert", successMessage);
+        }
+        catch (Exception ex)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", $"Unexpected error while applying action: {ex.Message}");
+        }
+    }
+}

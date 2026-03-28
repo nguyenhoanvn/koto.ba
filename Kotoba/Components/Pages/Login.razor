@@ -40,6 +40,13 @@
                 </div>
             }
 
+            @if (ShowBanned)
+            {
+                <div class="auth-alert" role="alert">
+                    Your account has been banned. Please contact support.
+                </div>
+            }
+
             <form method="post" action="/auth/login" class="auth-form">
                 <AntiforgeryToken />
 
@@ -67,5 +74,9 @@
     [SupplyParameterFromQuery(Name = "error")]
     public string? ErrorCode { get; set; }
 
+    [SupplyParameterFromQuery(Name = "banned")]
+    public string? BannedCode { get; set; }
+
     private bool ShowError => string.Equals(ErrorCode, "1", StringComparison.Ordinal);
+    private bool ShowBanned => string.Equals(BannedCode, "1", StringComparison.Ordinal);
 }

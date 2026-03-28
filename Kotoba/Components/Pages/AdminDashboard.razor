@@ -1,0 +1,37 @@
+@page "/admin/dashboard"
+@using Kotoba.Modules.Domain.Constants
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize(Roles = AdminRoles.AnyAdmin)]
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<div class="admin-redirecting">Redirecting to your dashboard...</div>
+
+@code {
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender)
+		{
+			return;
+		}
+
+		var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+
+		if (user.IsInRole(AdminRoles.SystemAdmin))
+		{
+			Navigation.NavigateTo("/admin/system/dashboard", true);
+			return;
+		}
+
+		if (user.IsInRole(AdminRoles.BusinessAdmin))
+		{
+			Navigation.NavigateTo("/admin/business/dashboard", true);
+			return;
+		}
+
+		Navigation.NavigateTo("/admin/login?error=1", true);
+	}
+}

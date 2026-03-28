@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>koto.ba — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --lime:#7AB800; --lime-b:#8FD400; --lime-l:#C8E63A;
+  --lime-pale:#EEF7C2; --lime-dim:rgba(122,184,0,0.10); --lime-dim2:rgba(122,184,0,0.06);
+  --green-dark:#2D5016;
+  --bg:#F0F4E4; --surface:#FFFFFF; --surface2:#F7FAF0; --surface3:#EDF2E0;
+  --text:#1A1F0E; --text2:#4A5428; --muted:#8A9468;
+  --border:rgba(122,184,0,0.18); --border2:rgba(122,184,0,0.10);
+  --red:#DC2626; --red-bg:rgba(220,38,38,0.08); --red-border:rgba(220,38,38,0.2);
+  --amber:#D97706; --amber-bg:rgba(217,119,6,0.08); --amber-border:rgba(217,119,6,0.2);
+  --blue:#2563EB; --blue-bg:rgba(37,99,235,0.08); --blue-border:rgba(37,99,235,0.2);
+  --teal:#0D9488; --teal-bg:rgba(13,148,136,0.08);
+  --shadow:0 1px 4px rgba(45,80,22,0.07); --shadow-md:0 4px 16px rgba(45,80,22,0.10);
+  --r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden;font-size:14px;}
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+.sidebar{width:224px;flex-shrink:0;background:var(--green-dark);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;}
+.brand-icon{width:36px;height:36px;border-radius:10px;background:var(--lime-l);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#1A1F0E;flex-shrink:0;}
+.brand-label{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#fff;}
+.brand-label span{color:rgba(255,255,255,0.35);}
+.admin-pill{margin-left:auto;padding:2px 8px;background:rgba(200,230,58,0.18);border:1px solid rgba(200,230,58,0.3);border-radius:20px;font-size:9px;font-weight:700;color:var(--lime-l);letter-spacing:1px;text-transform:uppercase;}
+
+.nav-scroll{flex:1;overflow-y:auto;padding:10px 10px;scrollbar-width:none;}
+.nav-scroll::-webkit-scrollbar{display:none;}
+.nav-group{margin-bottom:6px;}
+.nav-group-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);padding:10px 10px 5px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;transition:all 0.18s;color:rgba(255,255,255,0.55);font-size:13px;font-weight:500;position:relative;}
+.nav-item:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.9);}
+.nav-item.active{background:rgba(200,230,58,0.18);color:var(--lime-l);}
+.nav-item.active::before{content:'';position:absolute;left:-1px;width:3px;height:20px;background:var(--lime-l);border-radius:0 3px 3px 0;}
+.nav-item svg{flex-shrink:0;}
+.nav-pill{margin-left:auto;min-width:18px;height:18px;border-radius:9px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+.nav-pill.red{background:var(--red);color:#fff;}
+.nav-pill.amber{background:var(--amber);color:#fff;}
+
+.sidebar-footer{padding:12px 10px;border-top:1px solid rgba(255,255,255,0.08);}
+.admin-user{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;cursor:pointer;transition:background 0.2s;}
+.admin-user:hover{background:rgba(255,255,255,0.08);}
+.admin-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--lime-l),var(--lime));display:flex;align-items:center;justify-content:center;font-size:14px;}
+.admin-name{font-size:13px;font-weight:600;color:#fff;}
+.admin-role{font-size:11px;color:rgba(255,255,255,0.35);}
+
+/* ── MAIN ─────────────────────────────────────────────── */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.topbar{height:54px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;box-shadow:var(--shadow);}
+.topbar-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--text);flex:1;}
+.tb-search{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;width:220px;transition:border-color 0.2s;}
+.tb-search:focus-within{border-color:var(--lime);}
+.tb-search input{background:none;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:100%;}
+.tb-search input::placeholder{color:var(--muted);}
+.tb-btn{width:34px;height:34px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all 0.2s;}
+.tb-btn:hover{background:var(--lime-pale);color:var(--lime);border-color:var(--lime);}
+
+.content{flex:1;overflow-y:auto;padding:22px;min-height:0;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-thumb{background:rgba(122,184,0,0.2);border-radius:2px;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── STAT CARDS ──────────────────────────────────────── */
+.stat-grid{display:grid;gap:12px;margin-bottom:18px;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:1fr 1fr;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.stat-card::after{content:'';position:absolute;top:0;right:0;width:80px;height:80px;border-radius:50%;opacity:0.06;transform:translate(30px,-30px);}
+.stat-card.lime::after{background:var(--lime);}
+.stat-card.blue::after{background:var(--blue);}
+.stat-card.amber::after{background:var(--amber);}
+.stat-card.red::after{background:var(--red);}
+.stat-card.teal::after{background:var(--teal);}
+.stat-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:16px;}
+.si-lime{background:var(--lime-pale);}
+.si-blue{background:var(--blue-bg);}
+.si-amber{background:var(--amber-bg);}
+.si-red{background:var(--red-bg);}
+.si-teal{background:var(--teal-bg);}
+.stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--text);line-height:1;margin-bottom:3px;}
+.stat-label{font-size:11px;color:var(--muted);}
+.stat-delta{position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.up{background:rgba(13,148,136,0.1);color:var(--teal);}
+.dn{background:var(--red-bg);color:var(--red);}
+
+/* ── PANELS ──────────────────────────────────────────── */
+.row{display:grid;gap:14px;margin-bottom:18px;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.pt{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--text);}
+.pa{font-size:12px;color:var(--lime);cursor:pointer;font-weight:500;}
+.chart-wrap{position:relative;}
+
+/* ── PERIOD TABS ─────────────────────────────────────── */
+.period-tabs{display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.ptab{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);transition:all 0.2s;}
+.ptab.active{background:var(--surface);color:var(--lime);box-shadow:var(--shadow);}
+
+/* ── TABLE ───────────────────────────────────────────── */
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.tb-s{display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;flex:1;min-width:160px;max-width:280px;}
+.tb-s input{background:none;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:100%;}
+.tb-s input::placeholder{color:var(--muted);}
+.chip{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);color:var(--muted);background:var(--surface);transition:all 0.2s;}
+.chip.on{background:var(--lime-pale);color:var(--lime);border-color:rgba(122,184,0,0.3);font-weight:600;}
+.chip:hover:not(.on){border-color:rgba(122,184,0,0.25);color:var(--text2);}
+.btn{padding:8px 15px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-lime{background:var(--lime);color:#fff;box-shadow:0 2px 8px rgba(122,184,0,0.25);}
+.btn-lime:hover{background:var(--lime-b);transform:translateY(-1px);}
+.btn-ghost{background:var(--surface);border:1.5px solid var(--border);color:var(--text2);}
+.btn-ghost:hover{background:var(--lime-pale);border-color:var(--lime);color:var(--lime);}
+.btn-red{background:var(--red-bg);border:1.5px solid var(--red-border);color:var(--red);}
+.btn-red:hover{background:rgba(220,38,38,0.14);}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:7px;}
+.btn-icon{width:28px;height:28px;padding:0;justify-content:center;border-radius:7px;}
+
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:9px 13px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+.tbl td{padding:11px 13px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border2);}
+.tbl tbody tr:hover td{background:var(--lime-dim2);}
+.tbl tbody tr:last-child td{border-bottom:none;}
+.td-main{color:var(--text);font-weight:500;}
+.td-mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+.av-cell{display:flex;align-items:center;gap:9px;}
+.av-sm{width:30px;height:30px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;border:1px solid var(--border);}
+.td-act{display:flex;gap:5px;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.3px;}
+.b-green{background:rgba(13,148,136,0.1);color:var(--teal);}
+.b-red{background:var(--red-bg);color:var(--red);}
+.b-amber{background:var(--amber-bg);color:var(--amber);}
+.b-blue{background:var(--blue-bg);color:var(--blue);}
+.b-muted{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.b-lime{background:var(--lime-pale);color:var(--lime);}
+
+.role-sel{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);padding:4px 8px;border-radius:7px;font-size:11px;outline:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.role-sel:focus{border-color:var(--lime);}
+
+.pg{display:flex;align-items:center;gap:5px;margin-top:12px;justify-content:flex-end;}
+.pg-b{width:28px;height:28px;border-radius:7px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;transition:all 0.2s;}
+.pg-b:hover,.pg-b.on{background:var(--lime-pale);color:var(--lime);border-color:rgba(122,184,0,0.3);}
+
+/* ── REPORTS ─────────────────────────────────────────── */
+.report-tabs{display:flex;gap:0;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+.rtab{flex:1;padding:10px 8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border-right:1px solid var(--border);transition:all 0.2s;position:relative;}
+.rtab:last-child{border-right:none;}
+.rtab:hover{background:var(--surface2);color:var(--text2);}
+.rtab.active{background:var(--lime-pale);color:var(--lime);}
+.rtab-count{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;font-size:9px;font-weight:700;padding:0 4px;margin-left:5px;}
+.rtab-count.r{background:var(--red);color:#fff;}
+.rtab-count.a{background:var(--amber);color:#fff;}
+
+.rep-item{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:15px 16px;margin-bottom:10px;display:flex;gap:12px;transition:border-color 0.2s;box-shadow:var(--shadow);}
+.rep-item:hover{border-color:rgba(122,184,0,0.25);}
+.rep-sev{width:4px;border-radius:2px;align-self:stretch;flex-shrink:0;}
+.sev-h{background:var(--red);}
+.sev-m{background:var(--amber);}
+.sev-l{background:var(--muted);}
+.rep-body{flex:1;min-width:0;}
+.rep-meta{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap;}
+.rep-excerpt{font-size:12px;color:var(--text2);line-height:1.5;padding:9px 11px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--border);margin-bottom:8px;}
+.rep-info{font-size:11px;color:var(--muted);margin-bottom:8px;}
+.rep-info strong{color:var(--text2);}
+.rep-acts{display:flex;gap:7px;flex-wrap:wrap;}
+
+/* ── TOGGLE ──────────────────────────────────────────── */
+.tog{position:relative;display:inline-block;width:42px;height:22px;flex-shrink:0;cursor:pointer;}
+.tog input{position:absolute;opacity:0;width:0;height:0;}
+.tog-track{position:absolute;inset:0;background:rgba(0,0,0,0.1);border:1.5px solid rgba(0,0,0,0.12);border-radius:11px;transition:background 0.25s,border-color 0.25s;}
+.tog input:checked~.tog-track{background:var(--lime);border-color:var(--lime);}
+.tog-thumb{position:absolute;top:3px;left:3px;width:14px;height:14px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.25s;}
+.tog input:checked~.tog-thumb{left:23px;}
+
+/* ── MODAL ───────────────────────────────────────────── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.modal-ov.open{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:26px;width:460px;max-width:calc(100vw - 32px);box-shadow:var(--shadow-md);}
+.modal h3{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--text);margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:18px;}
+.mf{margin-bottom:13px;}
+.ml{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:5px;}
+.mi{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
+.mi:focus{border-color:var(--lime);}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">K</div>
+    <div class="brand-label">koto<span>.ba</span></div>
+    <div class="admin-pill">Admin</div>
+  </div>
+
+  <div class="nav-scroll">
+    <div class="nav-group">
+      <div class="nav-group-label">Analytics</div>
+      <div class="nav-item active" onclick="nav('dashboard',this)">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Manage</div>
+      <div class="nav-item" onclick="nav('users',this)">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Users
+      </div>
+      <div class="nav-item" onclick="nav('reports',this)">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        Reports
+        <span class="nav-pill red">11</span>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Content</div>
+      <div class="nav-item" onclick="nav('stories',this)">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+        Stories
+        <span class="nav-pill amber">3</span>
+      </div>
+      <div class="nav-item" onclick="nav('blacklist',this)">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        Blacklist
+      </div>
+      <div class="nav-item" onclick="nav('copymsg',this)">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Copy Messenger
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="admin-user">
+      <div class="admin-av">🍋</div>
+      <div>
+        <div class="admin-name">Super Admin</div>
+        <div class="admin-role">koto.ba · Owner</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="tb-search">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" color="var(--muted)"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input placeholder="Search…">
+    </div>
+    <div class="tb-btn">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+    </div>
+    <div class="tb-btn" onclick="window.open('chat.html','_blank')" title="Open user app">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DASHBOARD ══════════════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- period selector -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text2)">Overview</div>
+        <div class="period-tabs">
+          <div class="ptab active" onclick="setPeriod('day',this)">Today</div>
+          <div class="ptab" onclick="setPeriod('week',this)">Week</div>
+          <div class="ptab" onclick="setPeriod('month',this)">Month</div>
+          <div class="ptab" onclick="setPeriod('year',this)">Year</div>
+        </div>
+      </div>
+
+      <!-- stat cards row 1: core -->
+      <div class="stat-grid g4" style="margin-bottom:12px;">
+        <div class="stat-card lime">
+          <div class="stat-icon si-lime">👤</div>
+          <div class="stat-num" id="s-users">24,831</div>
+          <div class="stat-label">Total Users</div>
+          <div class="stat-delta up" id="d-users">+12.4%</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon si-blue">💬</div>
+          <div class="stat-num" id="s-msgs">1.2M</div>
+          <div class="stat-label">Messages</div>
+          <div class="stat-delta up" id="d-msgs">+8.1%</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-icon si-teal">📖</div>
+          <div class="stat-num" id="s-stories">3,841</div>
+          <div class="stat-label">Stories Posted</div>
+          <div class="stat-delta up" id="d-stories">+5.3%</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon si-amber">💭</div>
+          <div class="stat-num" id="s-ct">18,204</div>
+          <div class="stat-label">Current Thoughts</div>
+          <div class="stat-delta up" id="d-ct">+19.2%</div>
+        </div>
+      </div>
+
+      <!-- stat cards row 2: engagement -->
+      <div class="stat-grid g4" style="margin-bottom:18px;">
+        <div class="stat-card lime">
+          <div class="stat-icon si-lime">🟢</div>
+          <div class="stat-num" id="s-online">3,412</div>
+          <div class="stat-label">Online Now</div>
+          <div class="stat-delta up">Live</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon si-blue">❤️</div>
+          <div class="stat-num" id="s-react">84,210</div>
+          <div class="stat-label">Reactions</div>
+          <div class="stat-delta up">+22%</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon si-red">🚩</div>
+          <div class="stat-num">11</div>
+          <div class="stat-label">Pending Reports</div>
+          <div class="stat-delta dn">+4 new</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon si-amber">🔗</div>
+          <div class="stat-num">8,341</div>
+          <div class="stat-label">Copy Messenger users</div>
+          <div class="stat-delta up">+3.1%</div>
+        </div>
+      </div>
+
+      <!-- charts row 1 -->
+      <div class="row" style="grid-template-columns:2fr 1fr;">
+        <div class="panel">
+          <div class="ph">
+            <div class="pt" id="growth-title">User Growth — Today (hourly)</div>
+            <div class="pa" onclick="exportChart()">Export CSV</div>
+          </div>
+          <div class="chart-wrap" style="height:200px;"><canvas id="growthChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pt">Activity Breakdown</div></div>
+          <div class="chart-wrap" style="height:200px;"><canvas id="donutChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- charts row 2 -->
+      <div class="row" style="grid-template-columns:1fr 1fr;">
+        <div class="panel">
+          <div class="ph">
+            <div class="pt" id="ct-title">Current Thoughts — Today</div>
+          </div>
+          <div class="chart-wrap" style="height:160px;"><canvas id="ctChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ph">
+            <div class="pt" id="msg-title">Messages — Today</div>
+          </div>
+          <div class="chart-wrap" style="height:160px;"><canvas id="msgChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- charts row 3 -->
+      <div class="row" style="grid-template-columns:1fr 1fr;">
+        <div class="panel">
+          <div class="ph">
+            <div class="pt" id="story-title">Stories Posted — Today</div>
+          </div>
+          <div class="chart-wrap" style="height:160px;"><canvas id="storyChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ph">
+            <div class="pt">New Registrations — Today</div>
+          </div>
+          <div class="chart-wrap" style="height:160px;"><canvas id="regChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ USERS ══════════════════════════════════════ -->
+    <div class="page" id="page-users">
+      <div class="toolbar">
+        <div class="tb-s">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input placeholder="Name, email, @username…" oninput="filterUsers(this.value)">
+        </div>
+        <div class="chip on" onclick="filterStatus('all',this)">All</div>
+        <div class="chip" onclick="filterStatus('active',this)">Active</div>
+        <div class="chip" onclick="filterStatus('banned',this)">Banned</div>
+        <div class="chip" onclick="filterStatus('admin',this)">Admins</div>
+        <div style="margin-left:auto;display:flex;gap:7px;">
+          <button class="btn btn-ghost">⬇ Export</button>
+          <button class="btn btn-lime" onclick="openModal('addUser')">+ Add User</button>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);">
+        <table class="tbl">
+          <thead><tr>
+            <th><input type="checkbox" style="accent-color:var(--lime)"></th>
+            <th>User</th><th>Role</th><th>Status</th><th>Messages</th><th>Joined</th><th>Last Active</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="userTable"></tbody>
+        </table>
+      </div>
+      <div class="pg" id="userPag"></div>
+    </div>
+
+    <!-- ══ REPORTS ════════════════════════════════════ -->
+    <div class="page" id="page-reports">
+      <!-- summary -->
+      <div class="stat-grid g4" style="margin-bottom:16px;">
+        <div class="stat-card red"><div class="stat-icon si-red">🚩</div><div class="stat-num">11</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card amber"><div class="stat-icon si-amber">⏳</div><div class="stat-num">24</div><div class="stat-label">Resolved this week</div></div>
+        <div class="stat-card teal"><div class="stat-icon si-teal">✅</div><div class="stat-num">97.8%</div><div class="stat-label">Resolution rate</div></div>
+        <div class="stat-card blue"><div class="stat-icon si-blue">⏱</div><div class="stat-num">4.2h</div><div class="stat-label">Avg response time</div></div>
+      </div>
+
+      <!-- type tabs -->
+      <div class="report-tabs" id="reportTabs">
+        <div class="rtab active" onclick="showReports('ct',this)">💭 Current Thought <span class="rtab-count r">5</span></div>
+        <div class="rtab" onclick="showReports('chat',this)">💬 Chat Message <span class="rtab-count r">3</span></div>
+        <div class="rtab" onclick="showReports('story',this)">📖 Story <span class="rtab-count a">2</span></div>
+        <div class="rtab" onclick="showReports('account',this)">👤 Account <span class="rtab-count a">1</span></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <div class="chip on" onclick="fc(this)">All severity</div>
+        <div class="chip" onclick="fc(this)">🔴 High</div>
+        <div class="chip" onclick="fc(this)">🟡 Medium</div>
+        <div class="chip" onclick="fc(this)">⚪ Low</div>
+        <div style="margin-left:auto"><button class="btn btn-ghost btn-sm" onclick="resolveAll()">✓ Resolve All Visible</button></div>
+      </div>
+
+      <div id="reportList"></div>
+    </div>
+
+    <!-- ══ STORIES ════════════════════════════════════ -->
+    <div class="page" id="page-stories">
+      <div class="stat-grid g3" style="margin-bottom:16px;">
+        <div class="stat-card amber"><div class="stat-icon si-amber">⏳</div><div class="stat-num">3</div><div class="stat-label">Pending review</div></div>
+        <div class="stat-card teal"><div class="stat-icon si-teal">✅</div><div class="stat-num">127</div><div class="stat-label">Approved today</div></div>
+        <div class="stat-card red"><div class="stat-icon si-red">🗑</div><div class="stat-num">4</div><div class="stat-label">Rejected today</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="ph">
+          <div><div class="pt">Pending Stories</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Click to select, then approve or reject</div></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="rejectSelected()">🗑 Reject Selected</button>
+            <button class="btn btn-lime btn-sm" onclick="approveAll()">✓ Approve All</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;" id="pendingStories">
+          <div class="story-card" onclick="toggleStory(this)" data-user="@annguyen" data-time="Just now">
+            <div class="sc-bg" style="background:linear-gradient(160deg,#2D5016,#4A7C1F)">🍃</div>
+            <div class="sc-footer"><div class="sc-user">@annguyen</div><div class="sc-time">Just now</div></div>
+            <div class="sc-check"></div>
+          </div>
+          <div class="story-card" onclick="toggleStory(this)" data-user="@haphuong" data-time="3 min ago">
+            <div class="sc-bg" style="background:linear-gradient(160deg,#1A0820,#3D1050)">🎨</div>
+            <div class="sc-footer"><div class="sc-user">@haphuong</div><div class="sc-time">3 min ago</div></div>
+            <div class="sc-check"></div>
+          </div>
+          <div class="story-card" onclick="toggleStory(this)" data-user="@unknown99" data-time="5 min ago">
+            <div class="sc-bg" style="background:linear-gradient(160deg,#1A0808,#401010)">⚠️</div>
+            <div class="sc-footer"><div class="sc-user">@unknown99</div><div class="sc-time">5 min ago</div></div>
+            <div class="sc-check"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">Published Stories — Today</div></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="story-card approved"><div class="sc-bg" style="background:linear-gradient(160deg,#08181A,#103040)">🌊</div><div class="sc-footer"><div class="sc-user">@tuanlinh</div><div class="sc-time">15m ago</div></div></div>
+          <div class="story-card approved"><div class="sc-bg" style="background:linear-gradient(160deg,#1A1408,#403010)">🍋</div><div class="sc-footer"><div class="sc-user">@baochau</div><div class="sc-time">1h ago</div></div></div>
+          <div class="story-card approved"><div class="sc-bg" style="background:linear-gradient(160deg,#1A2E08,#2D5016)">🌿</div><div class="sc-footer"><div class="sc-user">@minhngoc</div><div class="sc-time">2h ago</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BLACKLIST ══════════════════════════════════ -->
+    <div class="page" id="page-blacklist">
+      <div class="stat-grid g3" style="margin-bottom:16px;">
+        <div class="stat-card red"><div class="stat-icon si-red">🚫</div><div class="stat-num">142</div><div class="stat-label">Banned Words</div></div>
+        <div class="stat-card blue"><div class="stat-icon si-blue">🔗</div><div class="stat-num">38</div><div class="stat-label">Blocked Domains</div></div>
+        <div class="stat-card amber"><div class="stat-icon si-amber">🛡️</div><div class="stat-num">2,841</div><div class="stat-label">Blocked this month</div></div>
+      </div>
+      <div class="row g2">
+        <div class="panel">
+          <div class="ph"><div class="pt">🚫 Banned Words</div></div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <input class="mi" id="wInput" style="flex:1" placeholder="Type word + Enter" onkeydown="addTag(event,'w')">
+            <button class="btn btn-lime" onclick="addTagBtn('w')">Add</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;" id="wTags">
+            <span class="tag-w">spam<span class="tx" onclick="removeTag(this)">×</span></span>
+            <span class="tag-w">scam<span class="tx" onclick="removeTag(this)">×</span></span>
+            <span class="tag-w">hack<span class="tx" onclick="removeTag(this)">×</span></span>
+            <span class="tag-w">free money<span class="tx" onclick="removeTag(this)">×</span></span>
+            <span class="tag-w">click here<span class="tx" onclick="removeTag(this)">×</span></span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pt">🔗 Blocked Domains</div></div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <input class="mi" id="lInput" style="flex:1" placeholder="domain.com + Enter" onkeydown="addTag(event,'l')">
+            <button class="btn btn-lime" onclick="addTagBtn('l')">Add</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;" id="lTags">
+            <span class="tag-l">malware.ru<span class="tx" onclick="removeTag(this)">×</span></span>
+            <span class="tag-l">phishing.xyz<span class="tx" onclick="removeTag(this)">×</span></span>
+            <span class="tag-l">bit.ly<span class="tx" onclick="removeTag(this)">×</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">Auto-action when triggered</div></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="radio" name="act" checked style="accent-color:var(--lime)"> Block silently</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="radio" name="act" style="accent-color:var(--lime)"> Block + warn user</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="radio" name="act" style="accent-color:var(--lime)"> Block + flag for review</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="radio" name="act" style="accent-color:var(--lime)"> Auto-ban account</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ COPY MESSENGER ════════════════════════════ -->
+    <div class="page" id="page-copymsg">
+      <div class="stat-grid g3" style="margin-bottom:16px;">
+        <div class="stat-card lime"><div class="stat-icon si-lime">🔗</div><div class="stat-num">5</div><div class="stat-label">Active Platforms</div></div>
+        <div class="stat-card blue"><div class="stat-icon si-blue">👥</div><div class="stat-num">8,341</div><div class="stat-label">Users enabled</div></div>
+        <div class="stat-card teal"><div class="stat-icon si-teal">📨</div><div class="stat-num">412K</div><div class="stat-label">Messages synced today</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="ph"><div class="pt">Platform Management</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px;" id="platformList"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">Sync Limits</div></div>
+        <div class="row g3" style="margin-bottom:12px;">
+          <div><div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Max platforms / user</div><input class="mi" value="3" type="number"></div>
+          <div><div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Sync delay (ms)</div><input class="mi" value="200" type="number"></div>
+          <div><div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Max messages / day</div><input class="mi" value="5000" type="number"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;"><button class="btn btn-lime">Save Settings</button></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- Modal: Add User -->
+<div class="modal-ov" id="modal-addUser">
+  <div class="modal">
+    <h3>Add New User</h3>
+    <div class="modal-sub">Create an account manually</div>
+    <div class="mf"><label class="ml">Full Name</label><input class="mi" placeholder="Nguyen Van A"></div>
+    <div class="mf"><label class="ml">Email</label><input class="mi" type="email" placeholder="user@koto.ba"></div>
+    <div class="mf"><label class="ml">Username</label><input class="mi" placeholder="@username"></div>
+    <div class="mf"><label class="ml">Role</label><select class="mi" style="cursor:pointer"><option>User</option><option>Moderator</option><option>Admin</option></select></div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeModal('addUser')">Cancel</button>
+      <button class="btn btn-lime" onclick="closeModal('addUser')">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirm Ban -->
+<div class="modal-ov" id="modal-ban">
+  <div class="modal">
+    <h3>Ban User</h3>
+    <div class="modal-sub" id="ban-sub">This will block the account immediately.</div>
+    <div class="mf"><label class="ml">Reason</label><select class="mi"><option>Spam</option><option>Hate speech</option><option>Harassment</option><option>Impersonation</option><option>Other</option></select></div>
+    <div class="mf"><label class="ml">Duration</label><select class="mi"><option>24 hours</option><option>7 days</option><option>30 days</option><option>Permanent</option></select></div>
+    <div class="mf"><label class="ml">Note (internal)</label><input class="mi" placeholder="Optional admin note…"></div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeModal('ban')">Cancel</button>
+      <button class="btn btn-red" onclick="confirmBan()">Confirm Ban</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* story cards */
+.story-card{width:120px;border-radius:12px;overflow:hidden;position:relative;cursor:pointer;border:2px solid var(--border);transition:all 0.2s;flex-shrink:0;}
+.story-card:hover{border-color:rgba(122,184,0,0.4);}
+.story-card.sel{border-color:var(--lime);box-shadow:0 0 0 2px var(--lime-pale);}
+.story-card.approved{opacity:0.65;cursor:default;}
+.sc-bg{height:160px;display:flex;align-items:center;justify-content:center;font-size:40px;}
+.sc-footer{padding:7px 8px;background:var(--surface);}
+.sc-user{font-size:11px;font-weight:600;color:var(--text);}
+.sc-time{font-size:10px;color:var(--muted);}
+.sc-check{position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.3);border:2px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;transition:all 0.2s;}
+.story-card.sel .sc-check{background:var(--lime);border-color:var(--lime);color:#1A1F0E;}
+/* blacklist tags */
+.tag-w,.tag-l{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;}
+.tag-w{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
+.tag-l{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue);}
+.tx{cursor:pointer;opacity:0.6;font-size:14px;line-height:1;transition:opacity 0.2s;}
+.tx:hover{opacity:1;}
+/* platform row */
+.plat-row{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;transition:border-color 0.2s;}
+.plat-row:hover{border-color:rgba(122,184,0,0.25);}
+.plat-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.plat-name{font-size:14px;font-weight:500;color:var(--text);}
+.plat-sub{font-size:11px;color:var(--muted);}
+</style>
+
+<script>
+/* ─── NAV ──────────────────────────────────────────── */
+const titles={dashboard:'Dashboard',users:'User Management',reports:'Reports & Violations',stories:'Story Moderation',blacklist:'Blacklist',copymsg:'Copy Messenger'};
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('topbar-title').textContent=titles[id];
+}
+function fc(el){el.closest('div').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
+
+/* ─── MODAL ─────────────────────────────────────────── */
+function openModal(id){document.getElementById('modal-'+id).classList.add('open');}
+function closeModal(id){document.getElementById('modal-'+id).classList.remove('open');}
+document.querySelectorAll('.modal-ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+/* ─── PERIOD / CHARTS ───────────────────────────────── */
+const periodData={
+  day:{
+    labels:['0h','2h','4h','6h','8h','10h','12h','14h','16h','18h','20h','22h'],
+    users:[18100,18200,18220,18300,18500,19200,20100,21000,22300,23400,24100,24831],
+    ct:[200,180,160,300,800,1400,2000,2400,2800,3200,3600,4100],
+    msgs:[800,600,400,1200,4800,9200,12000,14400,13200,11200,9600,7200],
+    stories:[2,1,0,3,8,14,18,22,20,16,12,9],
+    reg:[2,1,0,4,12,18,22,28,24,18,12,8],
+    growthTitle:'User Growth — Today (hourly)',
+    ctTitle:'Current Thoughts — Today',
+    msgTitle:'Messages — Today',
+    storyTitle:'Stories — Today',
+  },
+  week:{
+    labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    users:[22000,22400,22900,23300,23800,24200,24831],
+    ct:[8200,9100,10400,11200,12800,14100,18204],
+    msgs:[820000,940000,880000,1020000,990000,720000,580000],
+    stories:[480,560,510,680,720,380,320],
+    reg:[42,68,55,91,88,34,29],
+    growthTitle:'User Growth — This Week',
+    ctTitle:'Current Thoughts — This Week',
+    msgTitle:'Messages — This Week',
+    storyTitle:'Stories — This Week',
+  },
+  month:{
+    labels:['W1','W2','W3','W4'],
+    users:[20200,21800,23200,24831],
+    ct:[38000,52000,67000,88400],
+    msgs:[3800000,4200000,4600000,5100000],
+    stories:[1800,2200,2800,3841],
+    reg:[320,440,510,680],
+    growthTitle:'User Growth — This Month',
+    ctTitle:'Current Thoughts — This Month',
+    msgTitle:'Messages — This Month',
+    storyTitle:'Stories — This Month',
+  },
+  year:{
+    labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    users:[8000,10200,12800,14100,15900,17400,18800,20100,21600,22800,23900,24831],
+    ct:[null,null,null,null,null,null,null,null,null,null,null,88400],
+    msgs:[null,null,null,null,null,null,null,null,null,null,null,5100000],
+    stories:[null,null,null,null,null,null,null,null,null,null,null,3841],
+    reg:[600,820,1100,980,1300,1450,1600,1720,1840,1980,2100,2340],
+    growthTitle:'User Growth — This Year',
+    ctTitle:'Current Thoughts — This Year',
+    msgTitle:'Messages — This Year',
+    storyTitle:'Stories — This Year',
+  }
+};
+
+const statByPeriod={
+  day:{users:'24,831',msgs:'1.2M',stories:'3,841',ct:'18,204',du:'+12.4%',dm:'+8.1%',ds:'+5.3%',dc:'+19.2%'},
+  week:{users:'24,831',msgs:'6.0M',stories:'3,841',ct:'74K',du:'+12.4%',dm:'+31%',ds:'+28%',dc:'+44%'},
+  month:{users:'24,831',msgs:'22M',stories:'11K',ct:'245K',du:'+18.6%',dm:'+15%',ds:'+18%',dc:'+62%'},
+  year:{users:'24,831',msgs:'180M',stories:'88K',ct:'1.2M',du:'+210%',dm:'+340%',ds:'+280%',dc:'+880%'},
+};
+
+const co={
+  responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'#fff',titleColor:'#1A1F0E',bodyColor:'#4A5428',borderColor:'rgba(122,184,0,0.3)',borderWidth:1,padding:10}},
+  scales:{
+    x:{grid:{color:'rgba(122,184,0,0.06)'},ticks:{color:'#8A9468',font:{size:10}}},
+    y:{grid:{color:'rgba(122,184,0,0.06)'},ticks:{color:'#8A9468',font:{size:10}}}
+  }
+};
+
+let charts={};
+function mkLine(id,data,color){
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(document.getElementById(id),{type:'line',data:{labels:data.labels,datasets:[{data:data.vals,borderColor:color,backgroundColor:color+'18',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:color}]},options:{...co,scales:{...co.scales,x:{...co.scales.x},y:{...co.scales.y}}}});
+}
+function mkBar(id,data,color){
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels:data.labels,datasets:[{data:data.vals,backgroundColor:color+'38',borderColor:color,borderWidth:1.5,borderRadius:4}]},options:{...co}});
+}
+
+const pd=periodData.day;
+// donut (static)
+new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:['Messages','Thoughts','Stories','Reactions'],datasets:[{data:[52,22,14,12],backgroundColor:['#2563EB','#D97706','#0D9488','#7AB800'],borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{color:'#4A5428',font:{size:11},padding:10}},tooltip:{backgroundColor:'#fff',titleColor:'#1A1F0E',bodyColor:'#4A5428',borderColor:'rgba(122,184,0,0.3)',borderWidth:1}},cutout:'66%'}});
+
+function renderCharts(p){
+  const d=periodData[p];
+  mkLine('growthChart',{labels:d.labels,vals:d.users},'#7AB800');
+  mkBar('ctChart',{labels:d.labels,vals:d.ct},'#D97706');
+  mkBar('msgChart',{labels:d.labels,vals:d.msgs},'#2563EB');
+  mkBar('storyChart',{labels:d.labels,vals:d.stories},'#0D9488');
+  mkBar('regChart',{labels:d.labels,vals:d.reg},'#7AB800');
+  document.getElementById('growth-title').textContent=d.growthTitle;
+  document.getElementById('ct-title').textContent=d.ctTitle;
+  document.getElementById('msg-title').textContent=d.msgTitle;
+  document.getElementById('story-title').textContent=d.storyTitle;
+  const s=statByPeriod[p];
+  document.getElementById('s-users').textContent=s.users;
+  document.getElementById('s-msgs').textContent=s.msgs;
+  document.getElementById('s-stories').textContent=s.stories;
+  document.getElementById('s-ct').textContent=s.ct;
+  document.getElementById('d-users').textContent=s.du;
+  document.getElementById('d-msgs').textContent=s.dm;
+  document.getElementById('d-stories').textContent=s.ds;
+  document.getElementById('d-ct').textContent=s.dc;
+}
+renderCharts('day');
+
+function setPeriod(p,el){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderCharts(p);
+}
+function exportChart(){alert('CSV export — connect to your API');}
+
+/* ─── USERS ────────────────────────────────────────── */
+const USERS=[
+  {av:'🌿',name:'An Nguyen',un:'@annguyen',email:'an@koto.ba',role:'User',status:'active',msgs:'3,241',joined:'Jan 12, 2024',last:'Active now'},
+  {av:'🥝',name:'Tuan Linh',un:'@tuanlinh',email:'tuan@koto.ba',role:'Moderator',status:'active',msgs:'1,892',joined:'Feb 3, 2024',last:'2m ago'},
+  {av:'🦎',name:'Ha Phuong',un:'@haphuong',email:'ha@koto.ba',role:'User',status:'active',msgs:'982',joined:'Feb 14, 2024',last:'1h ago'},
+  {av:'🌱',name:'Bao Chau',un:'@baochau',email:'bao@koto.ba',role:'User',status:'active',msgs:'441',joined:'Mar 1, 2024',last:'3h ago'},
+  {av:'🍋',name:'Minh Duc',un:'@minhduc',email:'minh@koto.ba',role:'Admin',status:'active',msgs:'8,102',joined:'Nov 5, 2023',last:'5h ago'},
+  {av:'🎋',name:'Darkuser 42',un:'@darkuser42',email:'dark@anon.com',role:'User',status:'banned',msgs:'12',joined:'Mar 10, 2024',last:'1d ago'},
+  {av:'🌾',name:'Spam Bot',un:'@spammer99',email:'spam@bot.net',role:'User',status:'banned',msgs:'4,221',joined:'Mar 9, 2024',last:'2d ago'},
+  {av:'🍀',name:'Le Thi Mai',un:'@lethibmai',email:'mai@koto.ba',role:'User',status:'active',msgs:'229',joined:'Mar 5, 2024',last:'Yesterday'},
+];
+let currentFilter='all',currentSearch='';
+function filterUsers(q){currentSearch=q.toLowerCase();renderUsers();}
+function filterStatus(s,el){currentFilter=s;document.querySelectorAll('#page-users .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderUsers();}
+function renderUsers(){
+  let list=USERS.filter(u=>{
+    if(currentFilter==='active'&&u.status!=='active')return false;
+    if(currentFilter==='banned'&&u.status!=='banned')return false;
+    if(currentFilter==='admin'&&u.role==='User')return false;
+    if(currentSearch&&!u.name.toLowerCase().includes(currentSearch)&&!u.un.includes(currentSearch)&&!u.email.includes(currentSearch))return false;
+    return true;
+  });
+  document.getElementById('userTable').innerHTML=list.map((u,i)=>`
+    <tr>
+      <td><input type="checkbox" style="accent-color:var(--lime)"></td>
+      <td><div class="av-cell"><div class="av-sm">${u.av}</div><div><div class="td-main">${u.name}</div><div class="td-mono">${u.un} · ${u.email}</div></div></div></td>
+      <td><select class="role-sel"><option ${u.role==='User'?'selected':''}>User</option><option ${u.role==='Moderator'?'selected':''}>Moderator</option><option ${u.role==='Admin'?'selected':''}>Admin</option></select></td>
+      <td><span class="badge ${u.status==='active'?'b-green':'b-red'}">${u.status==='active'?'● Active':'✕ Banned'}</span></td>
+      <td class="td-mono">${u.msgs}</td>
+      <td class="td-mono">${u.joined}</td>
+      <td style="color:${u.last==='Active now'?'var(--teal)':'var(--text2)'};font-size:12px;">${u.last}</td>
+      <td><div class="td-act">
+        <button class="btn ${u.status==='active'?'btn-red':'btn-ghost'} btn-sm" onclick="banUser(this,'${u.name}','${u.un}')">${u.status==='active'?'🔒 Ban':'🔓 Unban'}</button>
+        <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="deleteUser(this)" style="color:var(--red);">🗑</button>
+      </div></td>
+    </tr>`).join('');
+  renderPag(list.length);
+}
+function banUser(btn,name,un){
+  const isBanning=btn.textContent.trim().startsWith('🔒');
+  if(isBanning){
+    document.getElementById('ban-sub').textContent=`This will block ${name} (${un}) immediately.`;
+    openModal('ban');
+    window._pendingBanBtn=btn;
+  } else {
+    btn.textContent='🔒 Ban'; btn.className='btn btn-red btn-sm';
+    const badge=btn.closest('tr').querySelector('.badge');
+    badge.className='badge b-green'; badge.textContent='● Active';
+  }
+}
+function confirmBan(){
+  closeModal('ban');
+  const btn=window._pendingBanBtn; if(!btn)return;
+  btn.textContent='🔓 Unban'; btn.className='btn btn-ghost btn-sm';
+  const badge=btn.closest('tr').querySelector('.badge');
+  badge.className='badge b-red'; badge.textContent='✕ Banned';
+}
+function deleteUser(btn){if(confirm('Delete this user permanently?'))btn.closest('tr').style.opacity='0.3';}
+function renderPag(count){
+  const pages=Math.max(1,Math.ceil(count/6));
+  document.getElementById('userPag').innerHTML=
+    '<div class="pg-b">‹</div>'+
+    Array.from({length:Math.min(pages,5)},(_,i)=>`<div class="pg-b${i===0?' on':''}">${i+1}</div>`).join('')+
+    (pages>5?'<div class="pg-b">…</div>':'')+
+    '<div class="pg-b">›</div>';
+}
+renderUsers();
+
+/* ─── REPORTS ──────────────────────────────────────── */
+const reportData={
+  ct:[
+    {sev:'h',type:'Hate speech',sub:'💭 Current Thought',by:3,ago:'5 min',excerpt:'Offensive language targeting a user group in a public thought',sender:'@darkuser42',acts:['ban','warn','dismiss']},
+    {sev:'h',type:'Spam',sub:'💭 Current Thought',by:1,ago:'18 min',excerpt:'Repeated promotional content: "Click here for free coins!!!"',sender:'@spammer99',acts:['remove','warn','dismiss']},
+    {sev:'m',type:'Misinformation',sub:'💭 Current Thought',by:2,ago:'42 min',excerpt:'Health misinformation spreading with fake statistics',sender:'@unknownuser',acts:['remove','warn','dismiss']},
+    {sev:'m',type:'Adult content',sub:'💭 Current Thought',by:1,ago:'1h',excerpt:'Explicit content posted publicly without age-gate',sender:'@user381',acts:['remove','warn','dismiss']},
+    {sev:'l',type:'Off-topic spam',sub:'💭 Current Thought',by:1,ago:'2h',excerpt:'"Follow me for daily tips!" — repeated 4 times',sender:'@promobot',acts:['warn','dismiss']},
+  ],
+  chat:[
+    {sev:'h',type:'Harassment',sub:'💬 Chat Message',by:1,ago:'12 min',excerpt:'Sustained threatening messages sent to another user over 2h',sender:'@bully22',acts:['ban','warn','dismiss']},
+    {sev:'m',type:'Phishing link',sub:'💬 Chat Message',by:2,ago:'30 min',excerpt:'Suspicious link shared: hxxps://fr33-coins[.]xyz/koto',sender:'@phishbot',acts:['remove','ban','dismiss']},
+    {sev:'l',type:'Spam',sub:'💬 Chat Message',by:1,ago:'3h',excerpt:'"Hey! Win big! Join my group now!"',sender:'@adbot99',acts:['warn','dismiss']},
+  ],
+  story:[
+    {sev:'h',type:'Adult content',sub:'📖 Story',by:4,ago:'8 min',excerpt:'Story contains explicit imagery — flagged by 4 users',sender:'@unknown99',acts:['remove','ban','dismiss']},
+    {sev:'m',type:'Spam',sub:'📖 Story',by:1,ago:'25 min',excerpt:'Story contains 6 repeated promotional links',sender:'@spammer99',acts:['remove','warn','dismiss']},
+  ],
+  account:[
+    {sev:'m',type:'Impersonation',sub:'👤 Account',by:2,ago:'1h',excerpt:'Profile name and avatar mimicking a public figure',sender:'@fakecelebrity',acts:['ban','rename','dismiss']},
+  ],
+};
+let currentRepType='ct';
+function showReports(type,el){
+  currentRepType=type;
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderReports();
+}
+function renderReports(){
+  const list=reportData[currentRepType]||[];
+  const sevLabel={h:'🔴 High',m:'🟡 Medium',l:'⚪ Low'};
+  const sevClass={h:'sev-h',m:'sev-m',l:'sev-l'};
+  const actLabel={ban:'🔒 Ban User',warn:'⚠️ Warn',dismiss:'✓ Dismiss',remove:'🗑 Remove',rename:'✏️ Force Rename'};
+  const actClass={ban:'btn-red',warn:'btn-ghost',dismiss:'btn-ghost',remove:'btn-red',rename:'btn-ghost'};
+  document.getElementById('reportList').innerHTML=list.map((r,i)=>`
+    <div class="rep-item" id="rep-${currentRepType}-${i}">
+      <div class="rep-sev ${sevClass[r.sev]}"></div>
+      <div class="rep-body">
+        <div class="rep-meta">
+          <span class="badge ${r.sev==='h'?'b-red':r.sev==='m'?'b-amber':'b-muted'}">${sevLabel[r.sev]}</span>
+          <span class="badge b-blue">${r.type}</span>
+          <span class="badge b-muted">${r.sub}</span>
+          <span style="font-size:11px;color:var(--muted)">Reported by ${r.by} user${r.by>1?'s':''} · ${r.ago} ago</span>
+        </div>
+        <div class="rep-excerpt">${r.excerpt}</div>
+        <div class="rep-info">From: <strong>${r.sender}</strong></div>
+        <div class="rep-acts">${r.acts.map(a=>`<button class="btn ${actClass[a]} btn-sm" onclick="resolveReport('${currentRepType}',${i},this)">${actLabel[a]}</button>`).join('')}</div>
+      </div>
+    </div>`).join('')||'<div style="text-align:center;padding:40px;color:var(--muted)">No reports in this category ✓</div>';
+}
+function resolveReport(type,idx,btn){
+  const item=document.getElementById(`rep-${type}-${idx}`);
+  item.style.transition='all 0.3s';item.style.opacity='0.35';item.style.pointerEvents='none';
+  const action=btn.textContent.trim();
+  item.querySelector('.rep-acts').innerHTML=`<span class="badge b-green">✓ Resolved: ${action}</span><span style="font-size:11px;color:var(--muted);margin-left:6px">Just now by you</span>`;
+  item.style.opacity='1';
+}
+function resolveAll(){document.querySelectorAll('#reportList .rep-acts button').forEach(b=>b.click());}
+renderReports();
+
+/* ─── STORIES ──────────────────────────────────────── */
+function toggleStory(card){card.classList.toggle('sel');card.querySelector('.sc-check').textContent=card.classList.contains('sel')?'✓':'';}
+function approveAll(){
+  document.querySelectorAll('#pendingStories .story-card').forEach(c=>{
+    c.style.transition='all 0.35s';c.style.transform='scale(0.9)';c.style.opacity='0';
+    setTimeout(()=>c.remove(),380);
+  });
+  setTimeout(()=>{const s=document.querySelector('[data-user]');if(s)s.closest('.panel').querySelector('.ph div div').textContent='All stories approved ✓';},450);
+}
+function rejectSelected(){document.querySelectorAll('#pendingStories .story-card.sel').forEach(c=>{c.style.transition='all 0.3s';c.style.opacity='0';setTimeout(()=>c.remove(),300);});}
+
+/* ─── BLACKLIST ─────────────────────────────────────── */
+function addTag(e,t){if(e.key==='Enter')addTagBtn(t);}
+function addTagBtn(t){
+  const inp=document.getElementById(t==='w'?'wInput':'lInput');
+  const v=inp.value.trim();if(!v)return;
+  const con=document.getElementById(t==='w'?'wTags':'lTags');
+  const span=document.createElement('span');
+  span.className=t==='w'?'tag-w':'tag-l';
+  span.innerHTML=`${esc(v)}<span class="tx" onclick="removeTag(this)">×</span>`;
+  con.appendChild(span);inp.value='';
+}
+function removeTag(el){el.closest('span').remove();}
+
+/* ─── COPY MESSENGER ────────────────────────────────── */
+const platforms=[
+  {icon:'📱',name:'WhatsApp',sub:'4,120 users · E2E encrypted',status:'green',on:true,color:'#25D36615'},
+  {icon:'✈️',name:'Telegram',sub:'2,891 users · Bot API v7.0',status:'green',on:true,color:'#2AABEE15'},
+  {icon:'📘',name:'Facebook Messenger',sub:'982 users · Graph API',status:'amber',on:true,color:'#1877F215'},
+  {icon:'🟦',name:'Zalo',sub:'348 users · OA API',status:'green',on:true,color:'rgba(62,207,142,0.08)'},
+  {icon:'💬',name:'iMessage',sub:'0 users · Requires Apple developer account',status:'muted',on:false,color:'rgba(122,184,0,0.06)'},
+  {icon:'🔵',name:'Signal',sub:'0 users · Coming soon',status:'muted',on:false,color:'rgba(74,158,255,0.06)'},
+];
+document.getElementById('platformList').innerHTML=platforms.map((p,i)=>`
+  <div class="plat-row">
+    <div class="plat-icon" style="background:${p.color}">${p.icon}</div>
+    <div style="flex:1"><div class="plat-name">${p.name}</div><div class="plat-sub">${p.sub}</div></div>
+    <span class="badge ${p.status==='green'?'b-green':p.status==='amber'?'b-amber':'b-muted'}">${p.status==='green'?'Operational':p.status==='amber'?'Degraded':'Disabled'}</span>
+    <label class="tog" style="margin-left:10px"><input type="checkbox" ${p.on?'checked':''}><div class="tog-track"></div><div class="tog-thumb"></div></label>
+  </div>`).join('');
+
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ─── LIVE COUNTER ──────────────────────────────────── */
+setInterval(()=>{
+  const el=document.getElementById('s-online');
+  if(el)el.textContent=(3400+Math.floor(Math.random()*80)).toLocaleString();
+},3000);
+</script>
+</body>
+</html>
