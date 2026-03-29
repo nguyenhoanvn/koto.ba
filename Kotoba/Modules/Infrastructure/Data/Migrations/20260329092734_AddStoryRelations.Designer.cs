@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Kotoba.Migrations
 {
     [DbContext(typeof(KotobaDbContext))]
-    [Migration("20260329072944_InitMigration")]
-    partial class InitMigration
+    [Migration("20260329092734_AddStoryRelations")]
+    partial class AddStoryRelations
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -238,7 +238,7 @@ namespace Kotoba.Migrations
 
                     b.HasIndex("FollowingId");
 
-                    b.ToTable("Follow");
+                    b.ToTable("Follows");
                 });
 
             modelBuilder.Entity("Kotoba.Modules.Domain.Entities.Message", b =>
@@ -473,49 +473,49 @@ namespace Kotoba.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("3650044c-feba-4fbc-997f-314856fc86a5"),
+                            Id = new Guid("77cbee9b-f77a-4b27-bd58-3d1006a58128"),
                             DisplayOrder = 1,
                             IsActive = true,
                             Name = "Spam"
                         },
                         new
                         {
-                            Id = new Guid("2843a75b-8093-40fe-8af3-5023ccdc4381"),
+                            Id = new Guid("03385eb1-2385-4a85-ab3b-d495dfda7084"),
                             DisplayOrder = 2,
                             IsActive = true,
                             Name = "Hate speech"
                         },
                         new
                         {
-                            Id = new Guid("63d5a568-1c57-463c-88d1-345bb1c60c49"),
+                            Id = new Guid("6b2977b7-46b9-41a2-9857-659fe8ef4991"),
                             DisplayOrder = 3,
                             IsActive = true,
                             Name = "Adult content"
                         },
                         new
                         {
-                            Id = new Guid("c7b68d7b-0818-41e4-823a-9bbf57bfac45"),
+                            Id = new Guid("6e07c934-460c-4304-92b1-2ea4134e1c2a"),
                             DisplayOrder = 4,
                             IsActive = true,
                             Name = "Harassment"
                         },
                         new
                         {
-                            Id = new Guid("ddd0a80f-c7dc-431b-b2d3-147d825dec95"),
+                            Id = new Guid("d6f519cd-1fe8-4410-89fb-f9f05671e6bb"),
                             DisplayOrder = 5,
                             IsActive = true,
                             Name = "Misinformation"
                         },
                         new
                         {
-                            Id = new Guid("d88d3cd6-c437-4b83-bc0a-51dfff61d2a1"),
+                            Id = new Guid("5bbc4d6d-81f3-4890-bb7e-e901be1bc6f3"),
                             DisplayOrder = 6,
                             IsActive = true,
                             Name = "Violence"
                         },
                         new
                         {
-                            Id = new Guid("c354f10b-bcb2-4fb9-a94c-6f3645a9fb46"),
+                            Id = new Guid("cfd12c27-0677-487a-b587-75f5d99e138d"),
                             DisplayOrder = 7,
                             IsActive = true,
                             Name = "Other"
@@ -547,11 +547,99 @@ namespace Kotoba.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
 
                     b.ToTable("Stories", (string)null);
+                });
+
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.StoryPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("StoryId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("StoryPermissions", (string)null);
+                });
+
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.StoryReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("StoryId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("StoryReactions", (string)null);
+                });
+
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.StoryView", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("NotificationSent")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("StoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ViewerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ViewerId");
+
+                    b.HasIndex("StoryId", "ViewerId")
+                        .IsUnique();
+
+                    b.ToTable("StoryViews", (string)null);
                 });
 
             modelBuilder.Entity("Kotoba.Modules.Domain.Entities.User", b =>
@@ -962,6 +1050,63 @@ namespace Kotoba.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.StoryPermission", b =>
+                {
+                    b.HasOne("Kotoba.Modules.Domain.Entities.Story", "Story")
+                        .WithMany("Permissions")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Kotoba.Modules.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Story");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.StoryReaction", b =>
+                {
+                    b.HasOne("Kotoba.Modules.Domain.Entities.Story", "Story")
+                        .WithMany("Reactions")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Kotoba.Modules.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Story");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.StoryView", b =>
+                {
+                    b.HasOne("Kotoba.Modules.Domain.Entities.Story", "Story")
+                        .WithMany("Views")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Kotoba.Modules.Domain.Entities.User", "Viewer")
+                        .WithMany()
+                        .HasForeignKey("ViewerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Story");
+
+                    b.Navigation("Viewer");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1032,6 +1177,15 @@ namespace Kotoba.Migrations
             modelBuilder.Entity("Kotoba.Modules.Domain.Entities.ReportCategory", b =>
                 {
                     b.Navigation("Reports");
+                });
+
+            modelBuilder.Entity("Kotoba.Modules.Domain.Entities.Story", b =>
+                {
+                    b.Navigation("Permissions");
+
+                    b.Navigation("Reactions");
+
+                    b.Navigation("Views");
                 });
 
             modelBuilder.Entity("Kotoba.Modules.Domain.Entities.User", b =>
