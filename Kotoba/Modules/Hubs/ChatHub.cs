@@ -129,6 +129,8 @@ namespace Kotoba.Modules.Hubs
                 .Select(p => p.UserId)
                 .ToListAsync();
 
+            await _context.SaveChangesAsync();
+
             await Clients.Users(participants).SendAsync("ConversationListChanged");
 
             await _notifHub.Clients.Groups(participants).SendAsync("NotifyMessage", dto);
