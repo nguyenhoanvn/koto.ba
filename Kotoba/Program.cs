@@ -15,7 +15,6 @@ using Kotoba.Modules.Infrastructure.Services.Identity;
 using Kotoba.Modules.Infrastructure.Services.Messages;
 using Kotoba.Modules.Infrastructure.Services.Notifications;
 using Kotoba.Modules.Infrastructure.Services.Reactions;
-using Kotoba.Modules.Infrastructure.Services.Realtime;
 using Kotoba.Modules.Infrastructure.Services.Reports;
 using Kotoba.Modules.Infrastructure.Services.Settings;
 using Kotoba.Modules.Infrastructure.Services.Social;
@@ -107,6 +106,7 @@ namespace Kotoba
             builder.Services.AddScoped<IFollowService, FollowService>();
             builder.Services.AddScoped<IFollowRepository, FollowRepository>();
             builder.Services.AddScoped<IGroupAdminService, GroupAdminService>();
+            builder.Services.AddSingleton<GlobalNotificationState>();
 
             var app = builder.Build();
 
