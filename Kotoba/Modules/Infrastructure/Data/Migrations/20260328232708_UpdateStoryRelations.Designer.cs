@@ -4,6 +4,7 @@ using Kotoba.Modules.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Kotoba.Modules.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(KotobaDbContext))]
-    partial class KotobaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260328232708_UpdateStoryRelations")]
+    partial class UpdateStoryRelations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -462,49 +465,49 @@ namespace Kotoba.Modules.Infrastructure.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("4316eb1b-2cf9-4b17-8446-b333bda71662"),
+                            Id = new Guid("d45efdf3-e288-45ab-bd98-f1f4e4341adb"),
                             DisplayOrder = 1,
                             IsActive = true,
                             Name = "Spam"
                         },
                         new
                         {
-                            Id = new Guid("7696c409-4b4f-4df4-aed3-dd2a6174b127"),
+                            Id = new Guid("bc6b295d-0d4b-4f1b-9aa9-ee699c08778f"),
                             DisplayOrder = 2,
                             IsActive = true,
                             Name = "Hate speech"
                         },
                         new
                         {
-                            Id = new Guid("82f78456-522a-42f8-8cf2-3f3cf0465380"),
+                            Id = new Guid("0fba1b1a-6aa0-4d57-89f7-9d3f841b2168"),
                             DisplayOrder = 3,
                             IsActive = true,
                             Name = "Adult content"
                         },
                         new
                         {
-                            Id = new Guid("832aa865-759a-4849-8194-a0c19838ae45"),
+                            Id = new Guid("5a30027b-dd63-4d5f-ba4e-42ec436fbb18"),
                             DisplayOrder = 4,
                             IsActive = true,
                             Name = "Harassment"
                         },
                         new
                         {
-                            Id = new Guid("4c8c60ed-6541-4990-8e52-dc0abff1281b"),
+                            Id = new Guid("6066b5cb-e8a3-40bc-8ec9-82298184b919"),
                             DisplayOrder = 5,
                             IsActive = true,
                             Name = "Misinformation"
                         },
                         new
                         {
-                            Id = new Guid("4d46c1db-8cb7-4f10-88c9-8a1852acb185"),
+                            Id = new Guid("ded0169c-b4f8-4621-aeff-4ea822bf7a77"),
                             DisplayOrder = 6,
                             IsActive = true,
                             Name = "Violence"
                         },
                         new
                         {
-                            Id = new Guid("c2ad33b0-d028-4d1b-8aec-4d2bb1c2a5fc"),
+                            Id = new Guid("24a6cb8b-eaec-4ddb-860b-288054892026"),
                             DisplayOrder = 7,
                             IsActive = true,
                             Name = "Other"
@@ -1041,13 +1044,13 @@ namespace Kotoba.Modules.Infrastructure.Data.Migrations
                     b.HasOne("Kotoba.Modules.Domain.Entities.Story", "Story")
                         .WithMany("Permissions")
                         .HasForeignKey("StoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Kotoba.Modules.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Story");
@@ -1060,13 +1063,13 @@ namespace Kotoba.Modules.Infrastructure.Data.Migrations
                     b.HasOne("Kotoba.Modules.Domain.Entities.Story", "Story")
                         .WithMany("Reactions")
                         .HasForeignKey("StoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Kotoba.Modules.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Story");
@@ -1079,13 +1082,13 @@ namespace Kotoba.Modules.Infrastructure.Data.Migrations
                     b.HasOne("Kotoba.Modules.Domain.Entities.Story", "Story")
                         .WithMany("Views")
                         .HasForeignKey("StoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Kotoba.Modules.Domain.Entities.User", "Viewer")
                         .WithMany()
                         .HasForeignKey("ViewerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Story");
