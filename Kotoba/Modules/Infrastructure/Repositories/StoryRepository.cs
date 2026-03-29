@@ -57,5 +57,28 @@ namespace Kotoba.Modules.Infrastructure.Repositories
                     .ToListAsync();
             }
         }
+        public async Task<List<Story>> GetActiveFollowingStoriesAsync(string userId)
+        {
+            using (var context = await _dbFactory.CreateDbContextAsync())
+            {
+                var now = DateTime.UtcNow;
+
+                var followingIds = await context.Follows
+                    .Where(f => f.FollowerId == userId)
+                    .Select(f => f.FollowingId)
+                    .ToListAsync();
+
+                return await context.Stories
+                    .AsNoTracking()
+                    .Include(s => s.User)
+                    .Where(s => s.ExpiresAt > now &&
+                        (followingIds.Contains(s.UserId) || s.UserId == userId)) 
+                    .OrderByDescending(s => s.CreatedAt)
+                    .GroupBy(s => s.UserId)
+                    .Select(g => g.First())
+                    .ToListAsync();
+            }
+        }
     }
 }
+

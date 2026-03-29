@@ -11,7 +11,7 @@ namespace Kotoba.Modules.Infrastructure.Data
             : base(options)
         {
         }
-
+        public DbSet<Follow> Follows => Set<Follow>();
         public DbSet<Conversation> Conversations => Set<Conversation>();
         public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
         public DbSet<Message> Messages => Set<Message>();
@@ -185,6 +185,21 @@ namespace Kotoba.Modules.Infrastructure.Data
                 entity.HasIndex(a => new { a.PerformedByAdminId, a.TimestampUtc });
                 entity.HasIndex(a => new { a.ActionType, a.TimestampUtc });
             });
+
+            modelBuilder.Entity<Follow>()
+        .HasKey(f => f.Id);
+
+            modelBuilder.Entity<Follow>()
+                .HasOne(f => f.Follower)
+                .WithMany(u => u.Following)
+                .HasForeignKey(f => f.FollowerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Follow>()
+                .HasOne(f => f.Following)
+                .WithMany(u => u.Followers)
+                .HasForeignKey(f => f.FollowingId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

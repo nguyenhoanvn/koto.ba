@@ -104,7 +104,8 @@ namespace Kotoba
             builder.Services.AddScoped<IMessageService, MessageService>();
             builder.Services.AddScoped<ReportRepository>();
             builder.Services.AddScoped<IReportService, ReportService>();
-
+            builder.Services.AddScoped<IFollowService, FollowService>();
+            builder.Services.AddScoped<IFollowRepository, FollowRepository>();
             builder.Services.AddScoped<IGroupAdminService, GroupAdminService>();
 
             var app = builder.Build();
