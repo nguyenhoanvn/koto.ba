@@ -688,7 +688,7 @@ namespace Kotoba.Modules.Hubs
         }
 
         // Helper dùng nội bộ trong các Hub method khác
-        private async Task NotifyAsync(CreateNotificationRequest request)
+        public async Task NotifyAsync(CreateNotificationRequest request)
         {
             var dto = await _notificationService.CreateAsync(request);
             await PushNotification(request.RecipientId, dto);
