@@ -11,4 +11,5 @@ public interface IStoryService
     Task<List<StoryDto>> GetActiveStoriesAsync();
 
     Task<List<StoryDto>> GetActiveStoriesByUserIdAsync(string userId);
+    Task<List<StoryDto>> GetActiveFollowingStoriesAsync(string userId);
 }

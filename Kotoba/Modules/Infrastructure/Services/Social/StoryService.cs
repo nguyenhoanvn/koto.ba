@@ -65,5 +65,11 @@ namespace Kotoba.Modules.Infrastructure.Services.Social
             var stories = await _storyRepository.GetActiveByUserIdAsync(userId);
             return _mapper.Map<List<StoryDto>>(stories);
         }
+
+        public async Task<List<StoryDto>> GetActiveFollowingStoriesAsync(string userId)
+        {
+            var stories = await _storyRepository.GetActiveFollowingStoriesAsync(userId);
+            return _mapper.Map<List<StoryDto>>(stories);
+        }
     }
 }
